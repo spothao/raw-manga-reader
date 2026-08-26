@@ -51,15 +51,52 @@ export function estimateFontSize(text, boxW, boxH, minPx = 10, maxPx = 24) {
   return Math.round(Math.min(maxPx, Math.max(minPx, px)));
 }
 
-/** Shrink an overlay box's font until its text fits inside (no clipping). */
-function fitTextToBox(box, minPx = 9) {
+/** Shrink an overlay box's font until its text fits inside (no clipping).
+ * If still overflowing at minPx, grow the box (downward/upward) so the text
+ * stays readable instead of spilling over neighbors. */
+function fitTextToBox(box, minPx = 8) {
   for (let i = 0; i < 30; i++) {
     const overflowY = box.scrollHeight > box.clientHeight + 1;
     const overflowX = box.scrollWidth > box.clientWidth + 1;
     if (!overflowY && !overflowX) return;
     const fs = parseFloat(box.style.fontSize);
-    if (fs <= minPx) return;
+    if (fs <= minPx) break;
     box.style.fontSize = `${fs - 1}px`;
+  }
+  if (box.scrollHeight > box.clientHeight + 1) {
+    const grow = box.scrollHeight - box.clientHeight;
+    const top = parseFloat(box.style.top);
+    const height = parseFloat(box.style.height);
+    const parentH = box.parentElement.clientHeight;
+    const growDown = top + height < 97;
+    if (growDown) {
+      box.style.height = `${height + grow / parentH * 100}%`;
+    } else if (top > 3) {
+      box.style.top = `${top - grow / parentH * 100}%`;
+      box.style.height = `${height + grow / parentH * 100}%`;
+    }
+  }
+}
+
+/** Nudge boxes that collide after auto-fit: shift the later one sideways so
+ * both stay readable. Runs once per page render. */
+function resolveOverlaps(overlaysEl) {
+  const boxes = [...overlaysEl.querySelectorAll('.overlay-box')];
+  const rects = boxes.map((b) => b.getBoundingClientRect());
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const ox = Math.min(rects[i].right, rects[j].right) - Math.max(rects[i].left, rects[j].left);
+      const oy = Math.min(rects[i].bottom, rects[j].bottom) - Math.max(rects[i].top, rects[j].top);
+      if (ox <= 2 || oy <= 2) continue;
+      const mover = boxes[j];
+      const left = parseFloat(mover.style.left);
+      const width = parseFloat(mover.style.width);
+      const shift = (ox + 2) / mover.parentElement.clientWidth * 100;
+      const newLeft = left - shift >= 0 ? left - shift : Math.min(left + shift, 100 - width);
+      mover.style.left = `${newLeft}%`;
+      const moved = mover.getBoundingClientRect();
+      rects[j] = moved;
+    }
   }
 }
 
@@ -245,14 +282,21 @@ export class Reader {
       box.addEventListener('pointerleave', cancelHold);
       box.addEventListener('pointercancel', cancelHold);
       page.overlaysEl.appendChild(box);
-      // size once laid out: estimate from real box size, apply user scale,
-      // then shrink until the text fits without clipping
-      requestAnimationFrame(() => {
+    }
+    // size after layout: estimate from real box size, apply user scale,
+    // shrink until text fits, then nudge colliding boxes apart
+    requestAnimationFrame(() => {
+      const boxes = [...page.overlaysEl.children];
+      result.items.forEach((item, i) => {
+        const box = boxes[i];
         const base = estimateFontSize(item.translation, box.clientWidth, box.clientHeight);
         box.style.fontSize = `${Math.max(8, Math.round(base * scale))}px`;
-        fitTextToBox(box);
       });
-    }
+      requestAnimationFrame(() => {
+        boxes.forEach((box) => fitTextToBox(box));
+        requestAnimationFrame(() => resolveOverlaps(page.overlaysEl));
+      });
+    });
   }
 
   /** Full-text popup for a dialog (hold on an overlay). */
