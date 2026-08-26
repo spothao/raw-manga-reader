@@ -218,7 +218,7 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   font-size: 15px;
   cursor: pointer;
 }
-.floating { position: fixed; right: 14px; bottom: 84px; z-index: 21; }
+.floating { position: fixed; right: 14px; bottom: 84px; z-index: 21; display: flex; flex-direction: column; gap: 10px; }
 .fab {
   width: 48px;
   height: 48px;
@@ -228,6 +228,9 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   font-size: 20px;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 
 /* ---------- settings dialog ---------- */

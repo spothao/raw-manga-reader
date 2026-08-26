@@ -248,6 +248,20 @@ function adjustFont(delta) {
   state.reader.rerenderOverlays();
 }
 
+// hold-to-peek: hide overlays while the 👁 button is held down
+const peekBtn = $('btn-peek');
+peekBtn.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  peekBtn.setPointerCapture?.(e.pointerId);
+  if (state.reader?.overlayVisible) document.body.classList.add('body-overlay-off');
+});
+for (const ev of ['pointerup', 'pointercancel']) {
+  peekBtn.addEventListener(ev, () => {
+    if (state.reader?.overlayVisible) document.body.classList.remove('body-overlay-off');
+  });
+}
+peekBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+
 $('btn-export').addEventListener('click', async () => {
   if (!state.reader) return;
   const btn = $('btn-export');
