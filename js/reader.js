@@ -52,35 +52,52 @@ export function estimateFontSize(text, boxW, boxH, minPx = 10, maxPx = 24) {
 }
 
 /** Shrink an overlay box's font until its text fits inside (no clipping).
- * If still overflowing at minPx, grow the box (downward/upward) so the text
- * stays readable instead of spilling over neighbors. */
+ * If still overflowing at minPx, grow the box around its center (both axes,
+ * keeping a roughly vertical rectangle) staying inside the page bounds. */
 function fitTextToBox(box, minPx = 8) {
+  const measure = () => {
+    const range = document.createRange();
+    range.selectNodeContents(box);
+    const t = range.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    return { overH: t.height - b.height, overW: t.width - b.width };
+  };
   for (let i = 0; i < 30; i++) {
-    const overflowY = box.scrollHeight > box.clientHeight + 1;
-    const overflowX = box.scrollWidth > box.clientWidth + 1;
-    if (!overflowY && !overflowX) return;
+    const { overH, overW } = measure();
+    if (overH <= 1 && overW <= 1) return;
     const fs = parseFloat(box.style.fontSize);
     if (fs <= minPx) break;
     box.style.fontSize = `${fs - 1}px`;
   }
-  if (box.scrollHeight > box.clientHeight + 1) {
-    const grow = box.scrollHeight - box.clientHeight;
-    const top = parseFloat(box.style.top);
-    const height = parseFloat(box.style.height);
-    const parentH = box.parentElement.clientHeight;
-    const growDown = top + height < 97;
-    if (growDown) {
-      box.style.height = `${height + grow / parentH * 100}%`;
-    } else if (top > 3) {
-      box.style.top = `${top - grow / parentH * 100}%`;
-      box.style.height = `${height + grow / parentH * 100}%`;
-    }
-  }
+  let { overH, overW } = measure();
+  if (overH <= 1 && overW <= 1) return;
+  const parent = box.parentElement;
+  const parentW = parent.clientWidth || 1;
+  const parentH = parent.clientHeight || 1;
+  const left = parseFloat(box.style.left);
+  const top = parseFloat(box.style.top);
+  const width = parseFloat(box.style.width);
+  const height = parseFloat(box.style.height);
+  const growH = overH / parentH * 100 + 1;
+  const targetW = Math.max(width, Math.min(25, (height + growH) * 0.55)) - width;
+  const growW = Math.max(overW / parentW * 100 + 0.5, targetW > 0 ? targetW : 0);
+  const roomBelow = Math.max(0, 100 - (top + height));
+  const roomAbove = Math.max(0, top);
+  const gDown = Math.min(growH, roomBelow);
+  const gUp = Math.min(growH - gDown, roomAbove);
+  const roomLeft = Math.max(0, left);
+  const roomRight = Math.max(0, 100 - (left + width));
+  const gLeft = Math.min(growW, roomLeft);
+  const gRight = Math.min(growW - gLeft, roomRight);
+  box.style.top = `${top - gUp}%`;
+  box.style.height = `${height + gDown + gUp}%`;
+  box.style.left = `${left - gLeft}%`;
+  box.style.width = `${width + gLeft + gRight}%`;
 }
 
-/** Shrink a box whose text occupies only a fraction of it: clamp the box to
- * the computed text size (plus padding), keeping its center anchored where
- * possible. Keeps giant bboxes from blanketing artwork. */
+/** Shrink a box whose text occupies only a fraction of it: scale the box
+ * down around its center while PRESERVING its aspect ratio (manga bubbles
+ * are tall rectangles; turning them wide causes neighbor collisions). */
 function shrinkBoxToText(box) {
   const text = box.textContent || '';
   if (!text) return;
@@ -89,13 +106,16 @@ function shrinkBoxToText(box) {
   const fs = parseFloat(box.style.fontSize) || 12;
   const boxW = box.clientWidth;
   const boxH = box.clientHeight;
+  const aspect = boxW / boxH;
   const charW = fs;
   const charsPerLine = Math.max(1, Math.floor(boxW / charW));
   const lines = Math.ceil(text.length / charsPerLine);
   const textH = lines * fs * 1.3;
   if (boxH <= textH * 1.35) return;
-  const newH = Math.min(boxH, Math.ceil(textH + fs * 0.8));
-  const newW = Math.min(boxW, Math.ceil(charsPerLine * charW * 1.15));
+  let newH = Math.min(boxH, Math.ceil(textH + fs * 0.8));
+  let newW = Math.round(newH * aspect);
+  newW = Math.min(newW, boxW);
+  newH = Math.round(newW / aspect);
   const parentW = parent.clientWidth || 1;
   const parentH = parent.clientHeight || 1;
   const leftPct = parseFloat(box.style.left);
@@ -120,13 +140,21 @@ function resolveOverlaps(overlaysEl) {
       const oy = Math.min(rects[i].bottom, rects[j].bottom) - Math.max(rects[i].top, rects[j].top);
       if (ox <= 2 || oy <= 2) continue;
       const mover = boxes[j];
+      const parent = mover.parentElement;
       const left = parseFloat(mover.style.left);
       const width = parseFloat(mover.style.width);
-      const shift = (ox + 2) / mover.parentElement.clientWidth * 100;
-      const newLeft = left - shift >= 0 ? left - shift : Math.min(left + shift, 100 - width);
-      mover.style.left = `${newLeft}%`;
-      const moved = mover.getBoundingClientRect();
-      rects[j] = moved;
+      const top = parseFloat(mover.style.top);
+      const height = parseFloat(mover.style.height);
+      const shiftXPct = (ox + 2) / parent.clientWidth * 100;
+      let newLeft = left - shiftXPct >= 0 ? left - shiftXPct : left + shiftXPct;
+      if (newLeft >= 0 && newLeft <= 100 - width) {
+        mover.style.left = `${newLeft}%`;
+      } else {
+        const shiftYPct = (oy + 2) / parent.clientHeight * 100;
+        const newTop = top + height + shiftYPct <= 100 ? top + shiftYPct : Math.max(0, top - shiftYPct);
+        mover.style.top = `${newTop}%`;
+      }
+      rects[j] = mover.getBoundingClientRect();
     }
   }
 }
@@ -329,7 +357,11 @@ export class Reader {
       });
       requestAnimationFrame(() => {
         boxes.forEach((box) => { shrinkBoxToText(box); fitTextToBox(box); });
-        requestAnimationFrame(() => resolveOverlaps(page.overlaysEl));
+        requestAnimationFrame(() => {
+          // one more fit pass in case growth ran, then clear collisions
+          boxes.forEach((box) => fitTextToBox(box));
+          resolveOverlaps(page.overlaysEl);
+        });
       });
     });
   }
