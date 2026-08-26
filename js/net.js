@@ -3,9 +3,15 @@
 const PROXY_BUILDERS = (custom) => {
   const list = [];
   // user's own relay first — public proxies are rate-limited and flaky
-  if (custom) list.push((u) => custom.includes('{url}')
-    ? custom.replace('{url}', encodeURIComponent(u))
-    : custom + encodeURIComponent(u));
+  if (custom) {
+    let prefix = custom.trim();
+    if (!prefix.includes('{url}') && !/[?&](url|u|q)=$/.test(prefix)) {
+      prefix += (prefix.includes('?') ? '&' : '?') + 'url=';
+    }
+    list.push((u) => prefix.includes('{url}')
+      ? prefix.replace('{url}', encodeURIComponent(u))
+      : prefix + encodeURIComponent(u));
+  }
   list.push(
     (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
     (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,

@@ -86,6 +86,13 @@ test('apiUrl: direct when no proxy, prefix/template when proxy set', () => {
   assert.equal(tpl, 'https://relay.dev/?u=' + encodeURIComponent('https://api.ilmu.ai/v1/chat/completions') + '&x=1');
 });
 
+test('apiUrl: bare prefix missing ?url= gets it appended (leading/trailing spaces trimmed)', () => {
+  const fixed = apiUrl('https://api.ilmu.ai/v1', 'https://relay.dev/proxy ');
+  assert.equal(fixed, 'https://relay.dev/proxy?url=' + encodeURIComponent('https://api.ilmu.ai/v1/chat/completions'));
+  const alreadyQ = apiUrl('https://api.ilmu.ai/v1', 'https://relay.dev/?x=1&url=');
+  assert.equal(alreadyQ, 'https://relay.dev/?x=1&url=' + encodeURIComponent('https://api.ilmu.ai/v1/chat/completions'));
+});
+
 test('DEFAULT_PROMPT contains {LANG} placeholder', () => {
   assert.ok(DEFAULT_PROMPT.includes('{LANG}'));
 });

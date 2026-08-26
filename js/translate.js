@@ -17,13 +17,19 @@ Rules:
 
 /** Build the request URL for a chat/completions call, routing through the
  * user's API relay when configured. Relay format: prefix + encoded URL, or a
- * template containing {url}. */
+ * template containing {url}. A bare prefix lacking "?url=" gets it appended. */
 export function apiUrl(baseUrl, apiProxy) {
   const target = `${normalizeBaseUrl(baseUrl)}/chat/completions`;
   if (!apiProxy) return target;
-  return apiProxy.includes('{url}')
-    ? apiProxy.replace('{url}', encodeURIComponent(target))
-    : apiProxy + encodeURIComponent(target);
+  let prefix = apiProxy.trim();
+  if (!prefix.includes('{url}')) {
+    if (!/[?&](url|u|q)=$/.test(prefix)) {
+      prefix += (prefix.includes('?') ? '&' : '?') + 'url=';
+    }
+  }
+  return prefix.includes('{url}')
+    ? prefix.replace('{url}', encodeURIComponent(target))
+    : prefix + encodeURIComponent(target);
 }
 export function normalizeBaseUrl(raw) {
   if (!raw) return '';
