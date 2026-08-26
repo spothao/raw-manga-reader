@@ -3,7 +3,6 @@
 import { fetchHtmlViaProxy } from './net.js';
 import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js';
 import { Reader } from './reader.js';
-import { exportChapter } from './export.js';
 import { DEFAULT_PROMPT } from './translate.js';
 import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js';
 import { cacheClear, cacheCount } from './cache.js';
@@ -302,17 +301,14 @@ $('file-import-settings').addEventListener('change', async (e) => {
   }
 });
 
-$('btn-export').addEventListener('click', async () => {
+$('btn-retry').addEventListener('click', async () => {
   if (!state.reader) return;
-  const btn = $('btn-export');
-  btn.textContent = '⏳';
-  try {
-    const base = (state.manga?.title || 'manga') + (state.chapters[state.currentChapterIdx]?.label || '');
-    await exportChapter(state.reader, base.replace(/[\\/:*?"<>|]/g, '_'));
-  } catch (e) {
-    alert(`导出失败: ${e.message || e}`);
-  } finally {
-    btn.textContent = '⬇️';
+  const btn = $('btn-retry');
+  btn.disabled = true;
+  const n = state.reader.retryIncomplete();
+  btn.disabled = false;
+  if (n === 0) {
+    alert('没有需要重试的页面（未翻译的页仍在队列中，或全部已完成）');
   }
 });
 

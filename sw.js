@@ -12,7 +12,6 @@ const SHELL = [
   './js/cache.js',
   './js/settings.js',
   './js/reader.js',
-  './js/export.js',
   './manifest.webmanifest',
   './icon.svg',
 ];

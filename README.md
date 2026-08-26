@@ -12,7 +12,9 @@ endpoint; nothing copyrighted is stored in the repo.
   numbered "panel mode" fallback when the model's boxes are too sloppy
 - Background pre-translation (next pages translate while you read), IndexedDB
   cache — each page translates only once
-- Chapter export to `.cbz` for offline reading
+- One-tap 🔄 retry for failed/stuck translations; hold 👁 to peek at the
+  original art; A−/A+ live font sizing
+- Settings export/import as JSON for device migration (includes API key)
 - PWA: installable on your phone home screen, works offline once cached
 - Settings: endpoint / API key / model / fallback model / 简体·繁体 / prompt /
   concurrency / custom CORS proxy / overlay opacity
@@ -76,7 +78,6 @@ js/net.js           CORS-proxy chain + wsrv.nl image proxy
 js/translate.js     VLM client, prompt, JSON repair, bbox validation (pure, unit-tested)
 js/cache.js         IndexedDB translation cache
 js/reader.js        reader UI, overlay rendering, translation scheduler
-js/export.js        CBZ export (canvas compositing + JSZip)
 js/settings.js      settings + history (localStorage)
 sw.js               PWA service worker (network-first shell)
 tests/              node --test units + Playwright mocked E2E script

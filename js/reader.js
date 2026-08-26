@@ -294,6 +294,21 @@ export class Reader {
     document.body.classList.toggle('body-overlay-off', !visible);
   }
 
+  /** Retry every page that is not done (failed or stuck). */
+  retryIncomplete() {
+    let retried = 0;
+    for (let i = 0; i < this.pages.length; i++) {
+      const page = this.pages[i];
+      if (page.done) continue;
+      if (this.scheduler.has(i)) continue;
+      page.statusEl.hidden = false;
+      page.statusEl.textContent = '⏳ 翻译中…';
+      this.#translate(i, { force: true });
+      retried++;
+    }
+    return retried;
+  }
+
   /** Ensure all pages are translated (for export). Resolves when complete. */
   async ensureAllTranslated() {
     const promises = this.pages.map((_, i) => new Promise((resolve) => {
