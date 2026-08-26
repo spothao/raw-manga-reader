@@ -1,0 +1,13 @@
+{
+  "name": "dokiraw 中文阅读器",
+  "short_name": "dokiraw阅读",
+  "description": "Read raw manga from dokiraw.space with Chinese translation overlay",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111318",
+  "theme_color": "#111318",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

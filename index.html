@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#111318">
+  <title>dokiraw 中文阅读器</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="topbar">
+    <button id="btn-home" class="icon-btn" title="首页">📖</button>
+    <div id="topbar-title">dokiraw 中文阅读器</div>
+    <button id="btn-settings" class="icon-btn" title="设置">⚙️</button>
+  </header>
+
+  <!-- HOME -->
+  <main id="view-home" class="view">
+    <div class="home-card">
+      <label for="url-input">粘贴 dokiraw 漫画或章节链接</label>
+      <div class="url-row">
+        <input id="url-input" type="url" placeholder="https://dokiraw.space/manga/..." autocapitalize="off" autocorrect="off">
+        <button id="btn-load" class="primary">读取</button>
+      </div>
+      <p class="hint">示例：https://dokiraw.space/manga/xie-tohui-nonu-wang</p>
+      <div id="error-banner" class="error" hidden></div>
+      <div id="history-list" class="history"></div>
+    </div>
+  </main>
+
+  <!-- MANGA (chapter list) -->
+  <main id="view-manga" class="view" hidden>
+    <div class="manga-head">
+      <h1 id="manga-title"></h1>
+      <button id="btn-first-chapter" class="primary">从第 1 话开始读</button>
+    </div>
+    <div id="chapter-grid" class="chapter-grid"></div>
+  </main>
+
+  <!-- READER -->
+  <main id="view-reader" class="view" hidden>
+    <div id="reader-progress" class="progress"></div>
+    <div id="pages"></div>
+    <div id="reader-error" class="error" hidden></div>
+    <nav class="chapter-nav">
+      <button id="btn-prev-chapter">上一话</button>
+      <button id="btn-toggle-overlay" class="primary">隐藏译文</button>
+      <button id="btn-next-chapter">下一话</button>
+    </nav>
+    <div class="floating">
+      <button id="btn-export" class="fab" title="导出本章 (CBZ)">⬇️</button>
+    </div>
+  </main>
+
+  <!-- SETTINGS -->
+  <dialog id="settings-dialog">
+    <form method="dialog" id="settings-form">
+      <h2>设置</h2>
+      <label>API Base URL
+        <input name="baseUrl" type="url" placeholder="https://api.example.com/v1" required>
+      </label>
+      <label>API Key
+        <input name="apiKey" type="password" placeholder="sk-..." autocomplete="off">
+      </label>
+      <label>模型（视觉）
+        <input name="model" type="text" placeholder="glm-5.3" required>
+      </label>
+      <label>备用模型（视觉，可选）
+        <input name="fallbackModel" type="text" placeholder="ilmu-vision-v1.3">
+      </label>
+      <label>目标语言
+        <select name="targetLang">
+          <option value="简体中文">简体中文</option>
+          <option value="繁體中文">繁體中文</option>
+        </select>
+      </label>
+      <label>并发数（同时翻译页数）
+        <input name="concurrency" type="number" min="1" max="6" value="2">
+      </label>
+      <label>自定义 CORS 代理（可选，兜底用）
+        <input name="customProxy" type="url" placeholder="https://my-proxy.example.com/?url=">
+      </label>
+      <label>译文亮度（气泡底色不透明度）
+        <input name="patchOpacity" type="range" min="0.5" max="1" step="0.05" value="0.92">
+      </label>
+      <details>
+        <summary>翻译 Prompt（高级）</summary>
+        <textarea name="promptTemplate" rows="8" spellcheck="false"></textarea>
+        <p class="hint">可用变量：{LANG}。留空恢复默认。</p>
+      </details>
+      <div class="dialog-actions">
+        <button type="button" id="btn-clear-cache" class="danger">清除翻译缓存</button>
+        <button type="button" id="btn-reset-settings">恢复默认</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="page-template">
+    <section class="page">
+      <img loading="lazy" decoding="async" alt="">
+      <div class="overlays"></div>
+      <div class="page-status" hidden></div>
+      <div class="panel-translations" hidden></div>
+    </section>
+  </template>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
