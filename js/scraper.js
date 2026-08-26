@@ -16,10 +16,11 @@ export function classifyUrl(raw) {
 }
 
 /** Extract chapter links from a manga page HTML. Newest-first order preserved.
+ * Handles both quoted (href="...") and unquoted (href=...) attributes.
  * @returns {Array<{href:string,label:string,num:number}>} */
 export function parseChapterLinks(html) {
   const out = new Map();
-  const re = /href="(https?:\/\/[^"]*?dokiraw\.space)?\/manga\/([^/"']+)\/(chapter-[^"'/#]+)\/?"[^>]*>([^<]*)</g;
+  const re = /href=["']?((?:https?:\/\/[^"'\s>]*?dokiraw\.space))?\/manga\/([^/"'\s>]+)\/(chapter-[^"'\/\s>#]+)\/?["']?[^>]*>([^<]*)</g;
   let m;
   while ((m = re.exec(html)) !== null) {
     const [, base, slug, chapter] = m;
@@ -34,11 +35,12 @@ export function parseChapterLinks(html) {
 }
 
 /** Extract page image URLs from a chapter page HTML.
+ * Handles both quoted and unquoted src attributes.
  * Prefers explicit page_N.<ext> images; falls back to all <img> excluding
  * site logos/cover art. */
 export function parsePageImages(html) {
   const imgs = [];
-  const re = /<img[^>]+src=["']([^"']+)["']/gi;
+  const re = /<img[^>]*?\ssrc=["']?([^"'\s>]+)["']?/gi;
   let m;
   while ((m = re.exec(html)) !== null) imgs.push(m[1]);
 

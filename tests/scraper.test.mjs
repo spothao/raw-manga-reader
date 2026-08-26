@@ -68,3 +68,31 @@ test('parseMangaTitle: prefers h1, decodes entities', () => {
   assert.equal(parseMangaTitle(MANGA_HTML), '血と灰の女王');
   assert.equal(parseMangaTitle('<title>Foo &amp; Bar RAW - Dokiraw</title><body></body>'), 'Foo & Bar');
 });
+
+const UNQUOTED_MANGA_HTML = `
+<html><body>
+<link href=https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-1 rel=next>
+<a href=https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-1><span>第1話</span></a>
+<a href=https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-2>第2話</a>
+</body></html>`;
+
+const UNQUOTED_CHAPTER_HTML = `
+<html><body>
+<img alt=Dokiraw src=https://dokiraw.space/public/assets/images/logo-dokiraw.svg>
+<img alt="Page 0" data-cdn=https://iphotomg.com/test/chapter_1/page_0.jpg data-original=https://iphotomg.com/test/chapter_1/page_0.jpg src=https://iphotomg.com/test/chapter_1/page_0.jpg>
+<img alt="Page 1" src=https://iphotomg.com/test/chapter_1/page_1.jpg>
+</body></html>`;
+
+test('parseChapterLinks: unquoted href attributes (proxy-serialized HTML)', () => {
+  const links = parseChapterLinks(UNQUOTED_MANGA_HTML);
+  assert.equal(links.length, 2);
+  assert.ok(links.some((l) => l.num === 1));
+  assert.ok(links.some((l) => l.num === 2));
+  assert.equal(links.find((l) => l.num === 1).href, 'https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-1');
+});
+
+test('parsePageImages: unquoted src attributes', () => {
+  const imgs = parsePageImages(UNQUOTED_CHAPTER_HTML);
+  assert.equal(imgs.length, 2);
+  assert.equal(imgs[0], 'https://iphotomg.com/test/chapter_1/page_0.jpg');
+});
