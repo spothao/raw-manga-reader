@@ -128,7 +128,12 @@ export class Reader {
     statusEl.hidden = false;
     statusEl.title = '点击重新翻译';
     const idx = this.pages.length;
-    statusEl.addEventListener('click', () => this.#translate(idx, { force: true }));
+    statusEl.addEventListener('click', () => {
+      if (statusEl.textContent.includes('失败')) {
+        alert(`翻译失败原因:\n\n${statusEl.title}\n\n点确定后自动重试。请检查 ⚙️ 设置中的 API 地址、密钥与中转 URL 是否填写正确。`);
+      }
+      this.#translate(idx, { force: true });
+    });
 
     this.pagesEl.appendChild(frag);
     const pageObj = {
@@ -172,7 +177,7 @@ export class Reader {
       await cacheSet(key, result).catch(() => {});
       this.#applyResult(idx, result);
     } catch (e) {
-      page.statusEl.textContent = `⚠️ 翻译失败（点击重试）`;
+      page.statusEl.textContent = '⚠️ 翻译失败';
       page.statusEl.title = String(e.message || e);
       console.error('translate failed', idx, e);
     }
