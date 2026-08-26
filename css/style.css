@@ -269,4 +269,13 @@ dialog textarea { font-family: ui-monospace, Menlo, monospace; font-size: 12px; 
 dialog details { margin-bottom: 12px; }
 dialog summary { font-size: 13px; color: var(--text-dim); cursor: pointer; }
 .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-.dialog-actions button { font-size: 14px; }
+.dialog-actions button, .dialog-actions .import-label {
+  font-size: 14px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid #333b49;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  display: inline-block;
+}

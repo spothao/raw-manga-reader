@@ -262,6 +262,46 @@ for (const ev of ['pointerup', 'pointercancel']) {
 }
 peekBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 
+// settings migration: export (includes API key) / import JSON
+$('btn-export-settings').addEventListener('click', () => {
+  const payload = {
+    type: 'dokiraw-reader-settings',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    settings: state.settings,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `dokiraw-reader-settings.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+});
+
+$('file-import-settings').addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const imported = parsed?.settings && parsed.type === 'dokiraw-reader-settings'
+      ? parsed.settings
+      : parsed;
+    const merged = { ...loadSettings(), ...imported };
+    saveSettings(merged);
+    state.settings = loadSettings();
+    if (state.reader) {
+      state.reader.settings = state.settings;
+      state.reader.rerenderOverlays();
+    }
+    openSettings();
+    alert('设置导入成功 ✓');
+  } catch (err) {
+    alert(`导入失败: 文件不是有效的设置 JSON (${err.message || err})`);
+  }
+});
+
 $('btn-export').addEventListener('click', async () => {
   if (!state.reader) return;
   const btn = $('btn-export');
