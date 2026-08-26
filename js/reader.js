@@ -5,6 +5,47 @@ import { parsePageImages } from './scraper.js';
 import { translatePageImage } from './translate.js';
 import { cacheGet, cacheSet } from './cache.js';
 
+/** Translate one page by URL without any rendering (headless, for preload).
+ * Checks cache first; returns true when the page ends up translated. */
+export async function translatePageHeadless(imageUrl, settings) {
+  const { cacheGet, cacheSet } = await import('./cache.js');
+  const key = imageUrl;
+  if (await cacheGet(key).catch(() => undefined)) return { cached: true };
+  const result = await translatePageImage({ imageUrl }, settings);
+  await cacheSet(key, result).catch(() => {});
+  return { cached: false, result };
+}
+
+/** Preload one chapter URL: fetch HTML, parse pages, translate all headlessly.
+ * Reports progress via onProgress(pageIdx, total, pageUrl). Returns summary. */
+export async function preloadChapter(chapterUrl, settings, onProgress, isCancelled) {
+  const { fetchHtmlViaProxy } = await import('./net.js');
+  const { parsePageImages } = await import('./scraper.js');
+  const html = await fetchHtmlViaProxy(chapterUrl, settings.customProxy);
+  const imageUrls = parsePageImages(html);
+  if (imageUrls.length === 0) throw new Error('未能解析出页面图片');
+  let translated = 0;
+  let cachedCount = 0;
+  const failures = [];
+  const queue = [...imageUrls];
+  const workers = Array.from({ length: Math.max(1, Math.min(10, Number(settings.concurrency) || 2)) }, async () => {
+    while (queue.length) {
+      if (isCancelled?.()) return;
+      const url = queue.shift();
+      const idx = imageUrls.indexOf(url);
+      try {
+        const { cached } = await translatePageHeadless(url, settings);
+        if (cached) cachedCount++; else translated++;
+        onProgress?.(translated + cachedCount + failures.length, imageUrls.length, url);
+      } catch (e) {
+        failures.push({ url, error: String(e.message || e) });
+        onProgress?.(translated + cachedCount + failures.length, imageUrls.length, url);
+      }
+    }
+  });
+  await Promise.all(workers);
+  return { total: imageUrls.length, translated, cachedCount, failures };
+}
 /** Priority queue running up to `concurrency` tasks at once, lowest index first. */
 export class Scheduler {
   constructor(concurrency = 2) {

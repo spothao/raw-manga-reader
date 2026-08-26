@@ -13,6 +13,7 @@
   <header id="topbar">
     <button id="btn-home" class="icon-btn" title="首页">📖</button>
     <div id="topbar-title">dokiraw 中文阅读器</div>
+    <button id="btn-preload" class="icon-btn" title="批量预载">⚡</button>
     <button id="btn-settings" class="icon-btn" title="设置">⚙️</button>
   </header>
 
@@ -55,6 +56,21 @@
       <button id="btn-translate-all" class="fab" title="预翻译整章">⚡</button>
       <button id="btn-retry" class="fab" title="重试失败页面">🔄</button>
       <button id="btn-peek" class="fab" title="按住查看原图">👁</button>
+    </div>
+  </main>
+
+  <!-- PRELOAD -->
+  <main id="view-preload" class="view" hidden>
+    <div class="home-card">
+      <h2>批量预载章节</h2>
+      <p class="hint">粘贴一个或多个章节链接（每行一个）。将按顺序翻译整章并缓存。</p>
+      <textarea id="preload-urls" rows="8" placeholder="https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-4&#10;https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-5" autocapitalize="off" autocorrect="off"></textarea>
+      <div class="url-row" style="margin-top:10px">
+        <button id="btn-start-preload" class="primary">开始预载</button>
+        <button id="btn-stop-preload" class="danger">停止</button>
+      </div>
+      <div id="preload-progress" class="hint" hidden></div>
+      <div id="preload-log" class="preload-log" hidden></div>
     </div>
   </main>
 

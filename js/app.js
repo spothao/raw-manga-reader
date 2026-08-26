@@ -2,7 +2,7 @@
 
 import { fetchHtmlViaProxy } from './net.js';
 import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js';
-import { Reader } from './reader.js';
+import { Reader, preloadChapter } from './reader.js';
 import { DEFAULT_PROMPT } from './translate.js';
 import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js';
 import { cacheClear, cacheCount } from './cache.js';
@@ -25,7 +25,7 @@ const state = {
 
 /* ---------- view switching ---------- */
 function show(viewId) {
-  for (const v of ['view-home', 'view-manga', 'view-reader']) {
+  for (const v of ['view-home', 'view-manga', 'view-reader', 'view-preload']) {
     $(v).hidden = v !== viewId;
   }
   window.scrollTo(0, 0);
@@ -209,6 +209,68 @@ $('url-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') loadUrl($('url-input').value);
 });
 $('btn-home').addEventListener('click', () => { renderHistory(); show('view-home'); });
+// ---------- batch preload ----------
+const preloadState = { running: false, cancel: false };
+
+$('btn-preload').addEventListener('click', () => show('view-preload'));
+
+$('btn-start-preload').addEventListener('click', async () => {
+  if (preloadState.running) return;
+  const urls = $('preload-urls').value
+    .split(/[\n\r]+/)
+    .map((s) => s.trim())
+    .filter((s) => /^https?:\/\/dokiraw\.space\/manga\/.+\/chapter-/.test(s));
+  if (urls.length === 0) {
+    alert('请输入至少一个有效的章节链接（https://dokiraw.space/manga/.../chapter-...，每行一个）');
+    return;
+  }
+  preloadState.running = true;
+  preloadState.cancel = false;
+  $('btn-start-preload').disabled = true;
+  const log = $('preload-log');
+  const progress = $('preload-progress');
+  log.hidden = false;
+  progress.hidden = false;
+  log.innerHTML = '';
+
+  const line = (html, cls = '') => {
+    const div = document.createElement('div');
+    if (cls) div.className = cls;
+    div.innerHTML = html;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  };
+
+  for (let c = 0; c < urls.length; c++) {
+    if (preloadState.cancel) break;
+    const url = urls[c];
+    const entry = line(`【${c + 1}/${urls.length}】${url}`, 'running');
+    try {
+      const summary = await preloadChapter(url, state.settings, (done, total) => {
+        entry.textContent = `【${c + 1}/${urls.length}】${url} — ${done}/${total} 页`;
+      }, () => preloadState.cancel);
+      entry.className = summary.failures.length ? 'fail' : 'ok';
+      entry.textContent = `【${c + 1}/${urls.length}】${url} — 完成：翻译 ${summary.translated}，缓存 ${summary.cachedCount}，失败 ${summary.failures.length}/${summary.total}`;
+    } catch (e) {
+      entry.className = 'fail';
+      entry.textContent = `【${c + 1}/${urls.length}】${url} — 失败：${e.message || e}`;
+    }
+    progress.textContent = `总进度：${c + 1}/${urls.length} 章${preloadState.cancel ? '（已停止）' : ''}`;
+  }
+
+  progress.textContent = preloadState.cancel
+    ? `已停止。完成 ${log.querySelectorAll('.ok').length} 章。`
+    : `全部完成 ✓（${urls.length} 章）`;
+  preloadState.running = false;
+  $('btn-start-preload').disabled = false;
+});
+
+$('btn-stop-preload').addEventListener('click', () => {
+  preloadState.cancel = true;
+  $('preload-progress').textContent = '正在停止…（当前页完成后暂停）';
+});
+
 $('btn-settings').addEventListener('click', openSettings);
 $('btn-close-settings').addEventListener('click', () => $('settings-dialog').close());
 $('settings-form').addEventListener('submit', () => saveSettingsFromForm());
