@@ -9,6 +9,7 @@ export const DEFAULTS = {
   concurrency: 2,
   customProxy: '',
   apiProxy: '',
+  fontScale: 1,
   patchOpacity: 0.92,
   promptTemplate: '',   // empty = DEFAULT_PROMPT
 };

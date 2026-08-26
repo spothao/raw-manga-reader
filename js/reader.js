@@ -51,6 +51,18 @@ export function estimateFontSize(text, boxW, boxH, minPx = 10, maxPx = 24) {
   return Math.round(Math.min(maxPx, Math.max(minPx, px)));
 }
 
+/** Shrink an overlay box's font until its text fits inside (no clipping). */
+function fitTextToBox(box, minPx = 9) {
+  for (let i = 0; i < 30; i++) {
+    const overflowY = box.scrollHeight > box.clientHeight + 1;
+    const overflowX = box.scrollWidth > box.clientWidth + 1;
+    if (!overflowY && !overflowX) return;
+    const fs = parseFloat(box.style.fontSize);
+    if (fs <= minPx) return;
+    box.style.fontSize = `${fs - 1}px`;
+  }
+}
+
 export class Reader {
   /**
    * @param {HTMLElement} pagesEl container for page elements
@@ -184,6 +196,7 @@ export class Reader {
   #renderOverlays(page, result) {
     page.overlaysEl.innerHTML = '';
     const opacity = Number(this.settings.patchOpacity) || 0.92;
+    const scale = Number(this.settings.fontScale) || 1;
     for (const item of result.items) {
       const [x, y, w, h] = item.bbox;
       const box = document.createElement('div');
@@ -196,12 +209,29 @@ export class Reader {
       box.style.fontSize = `${estimateFontSize(item.translation, box.clientWidth || 100, box.clientHeight || 40)}px`;
       box.textContent = item.translation;
       box.title = item.original;
-      // re-fit once laid out
+      // re-fit once laid out, applying user scale then shrinking until it fits
       requestAnimationFrame(() => {
-        box.style.fontSize = `${estimateFontSize(item.translation, box.clientWidth, box.clientHeight)}px`;
+        const base = parseFloat(box.style.fontSize) || 12;
+        box.style.fontSize = `${Math.max(8, Math.round(base * scale))}px`;
+        fitTextToBox(box);
       });
       page.overlaysEl.appendChild(box);
     }
+  }
+
+  /** Re-apply font scale to every rendered overlay (no re-translation). */
+  rerenderOverlays() {
+    for (const page of this.pages) {
+      if (page.done && page.result?.renderMode === 'overlay') {
+        this.#renderOverlays(page, page.result);
+      }
+    }
+  }
+
+  adjustFontScale(delta) {
+    const next = Math.round(Math.min(1.8, Math.max(0.5, (Number(this.settings.fontScale) || 1) + delta)) * 100) / 100;
+    this.settings.fontScale = next;
+    return next;
   }
 
   #renderPanel(page, result) {

@@ -51,7 +51,7 @@ function wrapText(ctx, text, maxWidth) {
 }
 
 /** Draw one page + translation overlays onto a canvas; returns the canvas. */
-export async function compositePage(page, patchOpacity) {
+export async function compositePage(page, patchOpacity, fontScale = 1) {
   const img = await loadImage(page.imageUrl);
   const canvas = document.createElement('canvas');
   canvas.width = img.naturalWidth;
@@ -80,7 +80,7 @@ export async function compositePage(page, patchOpacity) {
     ctx.fillRect(x, y, w, h);
 
     const fs = estimateFontSize(item.translation, w, h, Math.round(canvas.width / 90), Math.round(canvas.width / 28));
-    ctx.font = `600 ${fs}px sans-serif`;
+    ctx.font = `600 ${Math.max(8, Math.round(fs * fontScale))}px sans-serif`;
     ctx.fillStyle = '#111';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
@@ -99,9 +99,10 @@ export async function exportChapter(reader, filenameBase) {
 
   const zip = new JSZip();
   const patchOpacity = Number(reader.settings.patchOpacity) || 0.92;
+  const fontScale = Number(reader.settings.fontScale) || 1;
   for (let i = 0; i < reader.pages.length; i++) {
     const page = reader.pages[i];
-    const canvas = await compositePage(page, patchOpacity);
+    const canvas = await compositePage(page, patchOpacity, fontScale);
     const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.9));
     zip.file(`page_${String(i).padStart(3, '0')}.jpg`, blob);
   }

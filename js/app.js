@@ -167,6 +167,7 @@ function openSettings() {
   f.customProxy.value = s.customProxy;
   f.apiProxy.value = s.apiProxy;
   f.patchOpacity.value = s.patchOpacity;
+  f.fontScale.value = s.fontScale ?? 1;
   f.promptTemplate.value = s.promptTemplate || DEFAULT_PROMPT;
   cacheCount().then((n) => {
     $('btn-clear-cache').textContent = `清除翻译缓存（${n} 页）`;
@@ -187,10 +188,14 @@ function saveSettingsFromForm() {
     customProxy: f.customProxy.value.trim(),
     apiProxy: f.apiProxy.value.trim(),
     patchOpacity: Number(f.patchOpacity.value),
+    fontScale: Number(f.fontScale.value) || 1,
     promptTemplate: prompt === DEFAULT_PROMPT ? '' : prompt,
   });
   state.settings = loadSettings();
-  if (state.reader) state.reader.settings = state.settings;
+  if (state.reader) {
+    state.reader.settings = state.settings;
+    state.reader.rerenderOverlays();
+  }
 }
 
 /* ---------- wiring ---------- */
@@ -231,6 +236,17 @@ $('btn-toggle-overlay').addEventListener('click', () => {
   state.reader.setOverlayVisible(visible);
   $('btn-toggle-overlay').textContent = visible ? '隐藏译文' : '显示译文';
 });
+
+$('btn-font-smaller').addEventListener('click', () => adjustFont(-0.1));
+$('btn-font-bigger').addEventListener('click', () => adjustFont(0.1));
+
+function adjustFont(delta) {
+  if (!state.reader) return;
+  const scale = state.reader.adjustFontScale(delta);
+  saveSettings({ fontScale: scale });
+  state.settings.fontScale = scale;
+  state.reader.rerenderOverlays();
+}
 
 $('btn-export').addEventListener('click', async () => {
   if (!state.reader) return;
