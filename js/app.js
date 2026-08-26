@@ -9,6 +9,12 @@ import { cacheClear, cacheCount } from './cache.js';
 
 const $ = (id) => document.getElementById(id);
 
+function clampNum(raw, min, max, fallback) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
 const state = {
   settings: loadSettings(),
   chapters: [],       // sorted ascending
@@ -183,11 +189,11 @@ function saveSettingsFromForm() {
     model: f.model.value.trim(),
     fallbackModel: f.fallbackModel.value.trim(),
     targetLang: f.targetLang.value,
-    concurrency: Number(f.concurrency.value) || 2,
+    concurrency: Math.round(clampNum(f.concurrency.value, 1, 10, 2)),
     customProxy: f.customProxy.value.trim(),
     apiProxy: f.apiProxy.value.trim(),
-    patchOpacity: Number(f.patchOpacity.value),
-    fontScale: Number(f.fontScale.value) || 1,
+    patchOpacity: clampNum(f.patchOpacity.value, 0.5, 1, 0.92),
+    fontScale: clampNum(f.fontScale.value, 0.5, 1.8, 1),
     promptTemplate: prompt === DEFAULT_PROMPT ? '' : prompt,
   });
   state.settings = loadSettings();
@@ -204,6 +210,7 @@ $('url-input').addEventListener('keydown', (e) => {
 });
 $('btn-home').addEventListener('click', () => { renderHistory(); show('view-home'); });
 $('btn-settings').addEventListener('click', openSettings);
+$('btn-close-settings').addEventListener('click', () => $('settings-dialog').close());
 $('settings-form').addEventListener('submit', () => saveSettingsFromForm());
 $('btn-reset-settings').addEventListener('click', () => {
   resetSettings();
@@ -298,6 +305,16 @@ $('file-import-settings').addEventListener('change', async (e) => {
     alert('设置导入成功 ✓');
   } catch (err) {
     alert(`导入失败: 文件不是有效的设置 JSON (${err.message || err})`);
+  }
+});
+
+$('btn-translate-all').addEventListener('click', () => {
+  if (!state.reader) return;
+  const { queued, total } = state.reader.translateAll();
+  if (queued === 0) {
+    alert(`本章 ${total} 页已全部翻译完成 ✓`);
+  } else {
+    alert(`已开始预翻译整章：${queued}/${total} 页排队中（并发 ${state.settings.concurrency}），进度见顶部进度条。可离开页面但建议保持前台。`);
   }
 });
 

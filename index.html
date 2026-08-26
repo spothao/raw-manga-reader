@@ -52,6 +52,7 @@
       <button id="btn-next-chapter">下一话</button>
     </nav>
     <div class="floating">
+      <button id="btn-translate-all" class="fab" title="预翻译整章">⚡</button>
       <button id="btn-retry" class="fab" title="重试失败页面">🔄</button>
       <button id="btn-peek" class="fab" title="按住查看原图">👁</button>
     </div>
@@ -60,7 +61,10 @@
   <!-- SETTINGS -->
   <dialog id="settings-dialog">
     <form method="dialog" id="settings-form">
-      <h2>设置</h2>
+      <div class="dialog-head">
+        <h2>设置</h2>
+        <button type="button" id="btn-close-settings" class="close-btn" autofocus>✕</button>
+      </div>
       <label>API Base URL
         <input name="baseUrl" type="url" placeholder="https://api.example.com/v1" required>
       </label>
@@ -79,8 +83,8 @@
           <option value="繁體中文">繁體中文</option>
         </select>
       </label>
-      <label>并发数（同时翻译页数）
-        <input name="concurrency" type="number" min="1" max="6" value="2">
+      <label>并发数（同时翻译页数，1-10）
+        <input name="concurrency" type="number" min="1" max="10" step="1" value="2">
       </label>
       <label>自定义 CORS 代理（可选，兜底用）
         <input name="customProxy" type="url" placeholder="https://my-proxy.example.com/?url=">
@@ -88,11 +92,11 @@
       <label>API 中转（可选，端点不支持 CORS 时必填）
         <input name="apiProxy" type="url" placeholder="https://api-relay.xxx.workers.dev/proxy?url=">
       </label>
-      <label>译文亮度（气泡底色不透明度）
-        <input name="patchOpacity" type="range" min="0.5" max="1" step="0.05" value="0.92">
+      <label>译文亮度（气泡底色不透明度 0.5-1）
+        <input name="patchOpacity" type="number" min="0.5" max="1" step="0.05" value="0.92">
       </label>
-      <label>译文大小（全局缩放，阅读页也可用 A− / A+ 调整）
-        <input name="fontScale" type="range" min="0.5" max="1.8" step="0.05" value="1">
+      <label>译文大小（全局缩放 0.5-1.8，阅读页也可用 A− / A+ 调整）
+        <input name="fontScale" type="number" min="0.5" max="1.8" step="0.05" value="1">
       </label>
       <details>
         <summary>翻译 Prompt（高级）</summary>

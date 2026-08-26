@@ -8,7 +8,7 @@ import { cacheGet, cacheSet } from './cache.js';
 /** Priority queue running up to `concurrency` tasks at once, lowest index first. */
 export class Scheduler {
   constructor(concurrency = 2) {
-    this.concurrency = Math.max(1, Math.min(6, concurrency));
+    this.concurrency = Math.max(1, Math.min(10, concurrency));
     this.active = 0;
     this.tasks = new Map(); // index -> () => Promise
   }
@@ -387,6 +387,18 @@ export class Reader {
   setOverlayVisible(visible) {
     this.overlayVisible = visible;
     document.body.classList.toggle('body-overlay-off', !visible);
+  }
+
+  /** Queue translation for every page in the chapter (pre-load whole chapter).
+   * Already-done pages are skipped; the scheduler still enforces concurrency. */
+  translateAll() {
+    let queued = 0;
+    for (let i = 0; i < this.pages.length; i++) {
+      if (this.pages[i].done) continue;
+      this.#translate(i);
+      queued++;
+    }
+    return { queued, total: this.pages.length };
   }
 
   /** Retry every page that is not done (failed or stuck). */

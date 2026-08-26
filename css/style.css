@@ -275,6 +275,27 @@ dialog {
 }
 dialog::backdrop { background: rgba(0,0,0,0.6); }
 dialog h2 { margin: 0 0 12px; font-size: 18px; }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.dialog-head h2 { margin: 0; }
+.close-btn {
+  background: var(--surface-2);
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 15px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+}
+dialog input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+dialog input[type="number"]::-webkit-outer-spin-button,
+dialog input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 dialog label {
   display: block;
   font-size: 13px;
