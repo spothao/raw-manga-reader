@@ -116,7 +116,6 @@ export class Reader {
     el.dataset.idx = this.pages.length;
     const imgEl = frag.querySelector('img');
     imgEl.src = imageUrl; // CDN allows direct CORS access; no proxy needed
-    imgEl.addEventListener('load', () => this.#restaggerOverlays(el), { once: true });
     let fallbackIdx = 0;
     imgEl.addEventListener('error', () => {
       if (fallbackIdx < 2) {
@@ -132,13 +131,19 @@ export class Reader {
     statusEl.addEventListener('click', () => this.#translate(idx, { force: true }));
 
     this.pagesEl.appendChild(frag);
-    return {
+    const pageObj = {
       imageUrl, el, imgEl,
       overlaysEl: el.querySelector('.overlays'),
       statusEl,
       panelEl: el.querySelector('.panel-translations'),
       done: false,
     };
+    imgEl.addEventListener('load', () => {
+      if (pageObj.done && pageObj.result?.renderMode === 'overlay') {
+        this.#renderOverlays(pageObj, pageObj.result);
+      }
+    });
+    return pageObj;
   }
 
   #requestAround(idx) {
@@ -206,16 +211,16 @@ export class Reader {
       box.style.width = `${w / 10}%`;
       box.style.height = `${h / 10}%`;
       box.style.background = this.#samplePatch(page.imgEl, x + w / 2, y + h / 2, opacity);
-      box.style.fontSize = `${estimateFontSize(item.translation, box.clientWidth || 100, box.clientHeight || 40)}px`;
       box.textContent = item.translation;
       box.title = item.original;
-      // re-fit once laid out, applying user scale then shrinking until it fits
+      page.overlaysEl.appendChild(box);
+      // size once laid out: estimate from real box size, apply user scale,
+      // then shrink until the text fits without clipping
       requestAnimationFrame(() => {
-        const base = parseFloat(box.style.fontSize) || 12;
+        const base = estimateFontSize(item.translation, box.clientWidth, box.clientHeight);
         box.style.fontSize = `${Math.max(8, Math.round(base * scale))}px`;
         fitTextToBox(box);
       });
-      page.overlaysEl.appendChild(box);
     }
   }
 
@@ -270,11 +275,6 @@ export class Reader {
     } catch {
       return `rgba(255,255,255,${opacity})`;
     }
-  }
-
-  #restaggerOverlays(el) {
-    // overlays are absolutely positioned relative to .page which wraps the img; nothing needed
-    void el;
   }
 
   #renderProgress() {
