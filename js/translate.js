@@ -15,6 +15,21 @@ Rules:
 - Sound effects (onomatopoeia) are optional — include them only if clearly readable.
 - If the page contains no text at all, return [].`;
 
+/** Format prior-page dialog as a context block for the prompt. Entries are
+ * in reading order; only the most recent `limit` are kept (token budget). */
+export function buildContextBlock(entries, limit = 12) {
+  if (!Array.isArray(entries) || entries.length === 0) return '';
+  const lines = entries
+    .filter((e) => e && (e.original || e.translation))
+    .slice(-limit)
+    .map((e, i) => `${i + 1}. JP: ${e.original || '—'}\n   CN: ${e.translation || '—'}`);
+  if (lines.length === 0) return '';
+  return `\n\nContext — dialog from the PREVIOUS page, in reading order (the current page continues this scene):
+${lines.join('\n')}
+
+Use the context to keep pronouns, character voices, names, and terminology consistent. If a bubble on the current page continues a sentence from the context, translate it as the natural continuation.`;
+}
+
 /** Build the request URL for a chat/completions call, routing through the
  * user's API relay when configured. Relay format: prefix + encoded URL, or a
  * template containing {url}. A bare prefix lacking "?url=" gets it appended. */
@@ -110,9 +125,11 @@ export function pickRenderMode(items, invalidCount) {
  * @param {{imageUrl:string}} page
  * @param {object} settings {baseUrl, apiKey, model, fallbackModel, promptTemplate, targetLang}
  * @param {typeof fetch} [fetchImpl]
+ * @param {Function} [imageFetcher]
+ * @param {Array<{original:string,translation:string}>} [context] prior-page dialog, reading order
  * @returns {Promise<{items:Array, invalidCount:number, renderMode:string, model:string}>}
  */
-export async function translatePageImage(page, settings, fetchImpl = fetch, imageFetcher) {
+export async function translatePageImage(page, settings, fetchImpl = fetch, imageFetcher, context = []) {
   const getImage = imageFetcher || (async (url) => {
     const { imageToDataUrl } = await import('./net.js');
     return imageToDataUrl(url);
@@ -120,7 +137,8 @@ export async function translatePageImage(page, settings, fetchImpl = fetch, imag
   const dataUrl = await getImage(page.imageUrl);
 
   const prompt = (settings.promptTemplate || DEFAULT_PROMPT)
-    .replaceAll('{LANG}', settings.targetLang || '简体中文');
+    .replaceAll('{LANG}', settings.targetLang || '简体中文')
+    + buildContextBlock(context);
 
   const models = [settings.model, settings.fallbackModel].filter(Boolean);
   if (!settings.baseUrl || !models.length) throw new Error('未配置 API 地址或模型');

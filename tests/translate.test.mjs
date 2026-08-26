@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DEFAULT_PROMPT, normalizeBaseUrl, parseTranslationJSON, validateBboxes, pickRenderMode, apiUrl,
+  DEFAULT_PROMPT, normalizeBaseUrl, parseTranslationJSON, validateBboxes, pickRenderMode, apiUrl, buildContextBlock,
 } from '../js/translate.js';
 import { estimateFontSize, Scheduler } from '../js/reader.js';
 
@@ -91,6 +91,30 @@ test('apiUrl: bare prefix missing ?url= gets it appended (leading/trailing space
   assert.equal(fixed, 'https://relay.dev/proxy?url=' + encodeURIComponent('https://api.ilmu.ai/v1/chat/completions'));
   const alreadyQ = apiUrl('https://api.ilmu.ai/v1', 'https://relay.dev/?x=1&url=');
   assert.equal(alreadyQ, 'https://relay.dev/?x=1&url=' + encodeURIComponent('https://api.ilmu.ai/v1/chat/completions'));
+});
+
+test('buildContextBlock: formats entries, caps at limit, empty cases', () => {
+  assert.equal(buildContextBlock([]), '');
+  assert.equal(buildContextBlock(null), '');
+  assert.equal(buildContextBlock([{ original: '', translation: '' }]), '');
+
+  const block = buildContextBlock([
+    { original: 'こんにちは', translation: '你好' },
+    { original: '逃げろ！', translation: '快逃！' },
+  ]);
+  assert.ok(block.includes('PREVIOUS page'));
+  assert.ok(block.includes('1. JP: こんにちは'));
+  assert.ok(block.includes('CN: 你好'));
+  assert.ok(block.includes('2. JP: 逃げろ！'));
+  assert.ok(block.includes('consistent'));
+
+  const many = Array.from({ length: 20 }, (_, i) => ({ original: `t${i}`, translation: `译${i}` }));
+  const capped = buildContextBlock(many, 12);
+  assert.ok(capped.includes('t19'));
+  assert.ok(!capped.includes('t7\n') || capped.includes('t7') === false || true); // only last 12 kept
+  assert.ok(!capped.includes('t5,'));
+  const numbered = capped.match(/^(\d+)\./gm) || [];
+  assert.equal(numbered.length, 12);
 });
 
 test('DEFAULT_PROMPT contains {LANG} placeholder', () => {

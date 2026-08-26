@@ -157,6 +157,19 @@ export class Reader {
     }
   }
 
+  /** Dialog from the nearest completed earlier page, in reading order.
+   * Skipped when that page has no usable text or fell back to panel mode. */
+  #priorDialog(idx) {
+    for (let i = idx - 1; i >= 0; i--) {
+      const prev = this.pages[i];
+      if (!prev?.done || !prev.result) continue;
+      const entries = prev.result.texts?.length ? prev.result.texts : prev.result.items;
+      if (entries.length) return entries;
+      return [];
+    }
+    return [];
+  }
+
   async #translate(idx, { force = false } = {}) {
     const page = this.pages[idx];
     if (!page || page.done) return;
@@ -172,8 +185,9 @@ export class Reader {
     }
 
     try {
+      const context = this.#priorDialog(idx);
       const result = await this.scheduler.run(idx, () =>
-        translatePageImage({ imageUrl: page.imageUrl }, this.settings));
+        translatePageImage({ imageUrl: page.imageUrl }, this.settings, undefined, undefined, context));
       await cacheSet(key, result).catch(() => {});
       this.#applyResult(idx, result);
     } catch (e) {
