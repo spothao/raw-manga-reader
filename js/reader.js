@@ -103,8 +103,14 @@ export class Reader {
     const el = frag.querySelector('.page');
     el.dataset.idx = this.pages.length;
     const imgEl = frag.querySelector('img');
-    imgEl.src = imageProxyUrl(imageUrl, 0); // full res for reading
+    imgEl.src = imageUrl; // CDN allows direct CORS access; no proxy needed
     imgEl.addEventListener('load', () => this.#restaggerOverlays(el), { once: true });
+    let fallbackIdx = 0;
+    imgEl.addEventListener('error', () => {
+      if (fallbackIdx < 2) {
+        imgEl.src = imageProxyUrl(imageUrl, 0, fallbackIdx++);
+      }
+    });
 
     const statusEl = frag.querySelector('.page-status');
     statusEl.textContent = '⏳ 翻译中…';

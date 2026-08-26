@@ -15,7 +15,16 @@ Rules:
 - Sound effects (onomatopoeia) are optional — include them only if clearly readable.
 - If the page contains no text at all, return [].`;
 
-/** Normalize a user-supplied API base URL into one ending in /chat/completions path base. */
+/** Build the request URL for a chat/completions call, routing through the
+ * user's API relay when configured. Relay format: prefix + encoded URL, or a
+ * template containing {url}. */
+export function apiUrl(baseUrl, apiProxy) {
+  const target = `${normalizeBaseUrl(baseUrl)}/chat/completions`;
+  if (!apiProxy) return target;
+  return apiProxy.includes('{url}')
+    ? apiProxy.replace('{url}', encodeURIComponent(target))
+    : apiProxy + encodeURIComponent(target);
+}
 export function normalizeBaseUrl(raw) {
   if (!raw) return '';
   let u = raw.trim().replace(/\/+$/, '');
@@ -108,8 +117,7 @@ export async function translatePageImage(page, settings, fetchImpl = fetch, imag
     .replaceAll('{LANG}', settings.targetLang || '简体中文');
 
   const models = [settings.model, settings.fallbackModel].filter(Boolean);
-  const base = normalizeBaseUrl(settings.baseUrl);
-  if (!base || !models.length) throw new Error('未配置 API 地址或模型');
+  if (!settings.baseUrl || !models.length) throw new Error('未配置 API 地址或模型');
 
   let lastErr = null;
   for (const model of models) {
@@ -126,7 +134,7 @@ export async function translatePageImage(page, settings, fetchImpl = fetch, imag
         temperature: 0.1,
         max_tokens: 4096,
       };
-      const res = await fetchImpl(`${base}/chat/completions`, {
+      const res = await fetchImpl(apiUrl(settings.baseUrl, settings.apiProxy), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

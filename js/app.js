@@ -165,6 +165,7 @@ function openSettings() {
   f.targetLang.value = s.targetLang;
   f.concurrency.value = s.concurrency;
   f.customProxy.value = s.customProxy;
+  f.apiProxy.value = s.apiProxy;
   f.patchOpacity.value = s.patchOpacity;
   f.promptTemplate.value = s.promptTemplate || DEFAULT_PROMPT;
   cacheCount().then((n) => {
@@ -184,6 +185,7 @@ function saveSettingsFromForm() {
     targetLang: f.targetLang.value,
     concurrency: Number(f.concurrency.value) || 2,
     customProxy: f.customProxy.value.trim(),
+    apiProxy: f.apiProxy.value.trim(),
     patchOpacity: Number(f.patchOpacity.value),
     promptTemplate: prompt === DEFAULT_PROMPT ? '' : prompt,
   });

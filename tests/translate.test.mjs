@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DEFAULT_PROMPT, normalizeBaseUrl, parseTranslationJSON, validateBboxes, pickRenderMode,
+  DEFAULT_PROMPT, normalizeBaseUrl, parseTranslationJSON, validateBboxes, pickRenderMode, apiUrl,
 } from '../js/translate.js';
 import { estimateFontSize, Scheduler } from '../js/reader.js';
 
@@ -74,6 +74,16 @@ test('pickRenderMode: thresholds', () => {
     { bbox: [0, 0, 1, 1] }, { bbox: [0, 0, 1, 1] },
     { bbox: [0, 0, 1, 1] }, { bbox: [0, 0, 1, 1] },
   ], 1), 'overlay');
+});
+
+test('apiUrl: direct when no proxy, prefix/template when proxy set', () => {
+  assert.equal(apiUrl('https://api.ilmu.ai/v1', ''), 'https://api.ilmu.ai/v1/chat/completions');
+  assert.equal(apiUrl('https://api.ilmu.ai', ''),
+    'https://api.ilmu.ai/v1/chat/completions');
+  const prefix = apiUrl('https://api.ilmu.ai/v1', 'https://relay.dev/proxy?url=');
+  assert.equal(prefix, 'https://relay.dev/proxy?url=' + encodeURIComponent('https://api.ilmu.ai/v1/chat/completions'));
+  const tpl = apiUrl('https://api.ilmu.ai/v1', 'https://relay.dev/?u={url}&x=1');
+  assert.equal(tpl, 'https://relay.dev/?u=' + encodeURIComponent('https://api.ilmu.ai/v1/chat/completions') + '&x=1');
 });
 
 test('DEFAULT_PROMPT contains {LANG} placeholder', () => {

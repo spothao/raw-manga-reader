@@ -16,13 +16,20 @@ function loadJsZip() {
   });
 }
 
-function loadImage(url) {
+function loadImage(originalUrl) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`图片加载失败: ${url}`));
-    img.src = url;
+    let fallbackIdx = 0;
+    img.onerror = () => {
+      if (fallbackIdx < 2) {
+        img.src = imageProxyUrl(originalUrl, 0, fallbackIdx++);
+        return;
+      }
+      reject(new Error(`图片加载失败: ${originalUrl}`));
+    };
+    img.src = originalUrl;
   });
 }
 
@@ -45,7 +52,7 @@ function wrapText(ctx, text, maxWidth) {
 
 /** Draw one page + translation overlays onto a canvas; returns the canvas. */
 export async function compositePage(page, patchOpacity) {
-  const img = await loadImage(imageProxyUrl(page.imageUrl, 0));
+  const img = await loadImage(page.imageUrl);
   const canvas = document.createElement('canvas');
   canvas.width = img.naturalWidth;
   canvas.height = img.naturalHeight;

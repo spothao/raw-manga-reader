@@ -13,9 +13,15 @@ async (page) => {
       model: 'glm-5.3',
       fallbackModel: 'ilmu-vision-v1.3',
       concurrency: 2,
+      apiProxy: 'http://localhost:8787/proxy?url=',
+      customProxy: 'http://localhost:8787/html?url=',
     }));
     localStorage.removeItem('dokiraw-history');
   });
+  try {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Network.clearBrowserCache');
+  } catch {}
   await page.reload();
   await page.fill('#url-input', 'https://dokiraw.space/manga/xie-tohui-nonu-wang');
   await page.click('#btn-load');
@@ -23,7 +29,7 @@ async (page) => {
   const chapterCount = await page.locator('#chapter-grid .chapter-btn').count();
   const title = await page.textContent('#manga-title');
 
-  await page.click('#chapter-grid .chapter-btn:last-child'); // chapter 1
+  await page.click('#chapter-grid .chapter-btn:first-child'); // chapter 1 (grid sorted ascending)
   await page.waitForSelector('.page', { timeout: 30000 });
   // wait for first page to translate with real API
   await page.waitForSelector('.overlay-box, .panel-translations:not([hidden])', { timeout: 120000 });

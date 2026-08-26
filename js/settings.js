@@ -8,6 +8,7 @@ export const DEFAULTS = {
   targetLang: '简体中文',
   concurrency: 2,
   customProxy: '',
+  apiProxy: '',
   patchOpacity: 0.92,
   promptTemplate: '',   // empty = DEFAULT_PROMPT
 };

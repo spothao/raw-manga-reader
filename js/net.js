@@ -1,14 +1,16 @@
 // net.js — CORS proxy chain for HTML fetching + image proxy helpers.
 
 const PROXY_BUILDERS = (custom) => {
-  const list = [
-    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-    (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  ];
+  const list = [];
+  // user's own relay first — public proxies are rate-limited and flaky
   if (custom) list.push((u) => custom.includes('{url}')
     ? custom.replace('{url}', encodeURIComponent(u))
     : custom + encodeURIComponent(u));
+  list.push(
+    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  );
   return list;
 };
 
@@ -33,28 +35,47 @@ export async function fetchHtmlViaProxy(url, customProxy = '') {
   throw new Error(`所有代理均失败:\n${errors.join('\n')}`);
 }
 
+const IMAGE_PROXY_HOSTS = ['https://wsrv.nl', 'https://images.weserv.nl'];
+
 /**
- * Wrap an image URL with wsrv.nl image proxy (adds CORS headers + optional downscale).
+ * Wrap an image URL with the wsrv.nl image proxy (adds CORS headers + optional downscale).
  * @param {string} url direct image URL
  * @param {number} [width=1280] max width in px (0 = original)
+ * @param {number} [hostIdx=0] index into IMAGE_PROXY_HOSTS (fallback uses 1)
  */
-export function imageProxyUrl(url, width = 1280) {
-  let u = `https://wsrv.nl/?url=${encodeURIComponent(url)}`;
+export function imageProxyUrl(url, width = 1280, hostIdx = 0) {
+  const host = IMAGE_PROXY_HOSTS[Math.min(hostIdx, IMAGE_PROXY_HOSTS.length - 1)];
+  let u = `${host}/?url=${encodeURIComponent(url)}`;
   if (width > 0) u += `&w=${width}`;
   u += '&output=jpg&q=88&n=-1';
   return u;
 }
 
-/** Fetch an image through the proxy and return a data URL (base64). */
+/** Fetch an image as a data URL (base64). Tries the CDN directly first
+ * (dokiraw's image host sends permissive CORS headers), then falls back to
+ * image proxies for hosts that block direct browser access. */
 export async function imageToDataUrl(url, width = 1280) {
-  const res = await fetch(imageProxyUrl(url, width));
-  if (!res.ok) throw new Error(`image fetch HTTP ${res.status}`);
-  const blob = await res.blob();
-  if (blob.size > 12 * 1024 * 1024) throw new Error('image too large');
-  return await new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result);
-    fr.onerror = () => reject(new Error('FileReader failed'));
-    fr.readAsDataURL(blob);
-  });
+  const attempts = [
+    () => fetch(url),
+    () => fetch(imageProxyUrl(url, width, 0)),
+    () => fetch(imageProxyUrl(url, width, 1)),
+  ];
+  let lastErr;
+  for (const attempt of attempts) {
+    try {
+      const res = await attempt();
+      if (!res.ok) throw new Error(`image fetch HTTP ${res.status}`);
+      const blob = await res.blob();
+      if (blob.size > 12 * 1024 * 1024) throw new Error('image too large');
+      return await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => reject(new Error('FileReader failed'));
+        fr.readAsDataURL(blob);
+      });
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('image fetch failed');
 }
