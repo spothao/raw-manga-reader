@@ -169,6 +169,34 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   pointer-events: auto;
   cursor: pointer;
 }
+.overlay-box.raised {
+  z-index: 10;
+  outline: 2px solid var(--accent-2);
+  outline-offset: -2px;
+}
+
+.text-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  padding: 24px;
+}
+.text-popup .card {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 420px;
+  max-height: 70vh;
+  overflow: auto;
+}
+.text-popup .cn { font-size: 17px; line-height: 1.6; }
+.text-popup .jp { color: var(--text-dim); font-size: 13px; margin-top: 10px; line-height: 1.5; }
+.text-popup .hint { color: var(--text-dim); font-size: 11px; margin-top: 14px; text-align: center; }
 .body-overlay-off .overlays { display: none; }
 
 .page-status {

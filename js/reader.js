@@ -232,6 +232,18 @@ export class Reader {
       box.style.background = this.#samplePatch(page.imgEl, x + w / 2, y + h / 2, opacity);
       box.textContent = item.translation;
       box.title = item.original;
+      box.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        box.classList.add('raised');
+      });
+      let holdTimer = null;
+      box.addEventListener('pointerdown', (ev) => {
+        holdTimer = setTimeout(() => { holdTimer = null; this.#showTextPopup(item); }, 550);
+      });
+      const cancelHold = () => { if (holdTimer) clearTimeout(holdTimer); holdTimer = null; };
+      box.addEventListener('pointerup', cancelHold);
+      box.addEventListener('pointerleave', cancelHold);
+      box.addEventListener('pointercancel', cancelHold);
       page.overlaysEl.appendChild(box);
       // size once laid out: estimate from real box size, apply user scale,
       // then shrink until the text fits without clipping
@@ -241,6 +253,31 @@ export class Reader {
         fitTextToBox(box);
       });
     }
+  }
+
+  /** Full-text popup for a dialog (hold on an overlay). */
+  #showTextPopup(item) {
+    const overlay = document.createElement('div');
+    overlay.className = 'text-popup';
+    const card = document.createElement('div');
+    card.className = 'card';
+    const cn = document.createElement('div');
+    cn.className = 'cn';
+    cn.textContent = item.translation;
+    card.appendChild(cn);
+    if (item.original && item.original !== item.translation) {
+      const jp = document.createElement('div');
+      jp.className = 'jp';
+      jp.textContent = item.original;
+      card.appendChild(jp);
+    }
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = '点击任意处关闭';
+    card.appendChild(hint);
+    overlay.appendChild(card);
+    overlay.addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
   }
 
   /** Re-apply font scale to every rendered overlay (no re-translation). */
