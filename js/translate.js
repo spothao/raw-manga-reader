@@ -10,6 +10,7 @@ Return ONLY a valid JSON array (no markdown, no commentary) in exactly this form
 Rules:
 - bbox uses normalized coordinates from 0 to 1000 relative to image dimensions. [x, y] is the TOP-LEFT corner of the bubble, w and h its width and height.
 - The bbox must cover the ENTIRE bubble area, not just the text inside.
+- The bbox must TIGHTLY fit the bubble or text block — a 10-character line needs roughly 150x80 units at most. Never include surrounding artwork, panel gutters, or empty space. If in doubt, make the bbox SMALLER.
 - translation must be natural, fluent {LANG} manga dialog. Keep it concise so it fits the bubble.
 - Order items in Japanese reading order (top-to-bottom, right-to-left).
 - Sound effects (onomatopoeia) are optional — include them only if clearly readable.

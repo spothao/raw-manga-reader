@@ -78,8 +78,39 @@ function fitTextToBox(box, minPx = 8) {
   }
 }
 
-/** Nudge boxes that collide after auto-fit: shift the later one sideways so
- * both stay readable. Runs once per page render. */
+/** Shrink a box whose text occupies only a fraction of it: clamp the box to
+ * the computed text size (plus padding), keeping its center anchored where
+ * possible. Keeps giant bboxes from blanketing artwork. */
+function shrinkBoxToText(box) {
+  const text = box.textContent || '';
+  if (!text) return;
+  const parent = box.parentElement;
+  if (!parent) return;
+  const fs = parseFloat(box.style.fontSize) || 12;
+  const boxW = box.clientWidth;
+  const boxH = box.clientHeight;
+  const charW = fs;
+  const charsPerLine = Math.max(1, Math.floor(boxW / charW));
+  const lines = Math.ceil(text.length / charsPerLine);
+  const textH = lines * fs * 1.3;
+  if (boxH <= textH * 1.35) return;
+  const newH = Math.min(boxH, Math.ceil(textH + fs * 0.8));
+  const newW = Math.min(boxW, Math.ceil(charsPerLine * charW * 1.15));
+  const parentW = parent.clientWidth || 1;
+  const parentH = parent.clientHeight || 1;
+  const leftPct = parseFloat(box.style.left);
+  const topPct = parseFloat(box.style.top);
+  let newLeftPct = leftPct + (boxW - newW) / 2 / parentW * 100;
+  if (leftPct + boxW / parentW * 100 > 85) {
+    newLeftPct = leftPct + (boxW - newW) / parentW * 100;
+  }
+  newLeftPct = Math.max(0, Math.min(newLeftPct, 100 - newW / parentW * 100));
+  const newTopPct = topPct + (boxH - newH) / 2 / parentH * 100;
+  box.style.left = `${newLeftPct}%`;
+  box.style.top = `${Math.max(0, newTopPct)}%`;
+  box.style.width = `${newW / parentW * 100}%`;
+  box.style.height = `${newH / parentH * 100}%`;
+}
 function resolveOverlaps(overlaysEl) {
   const boxes = [...overlaysEl.querySelectorAll('.overlay-box')];
   const rects = boxes.map((b) => b.getBoundingClientRect());
@@ -283,17 +314,21 @@ export class Reader {
       box.addEventListener('pointercancel', cancelHold);
       page.overlaysEl.appendChild(box);
     }
-    // size after layout: estimate from real box size, apply user scale,
-    // shrink until text fits, then nudge colliding boxes apart
+    // size after layout: font sized so text fills the bubble naturally,
+    // then clamp the box to the text and nudge collisions apart
     requestAnimationFrame(() => {
       const boxes = [...page.overlaysEl.children];
       result.items.forEach((item, i) => {
         const box = boxes[i];
-        const base = estimateFontSize(item.translation, box.clientWidth, box.clientHeight);
-        box.style.fontSize = `${Math.max(8, Math.round(base * scale))}px`;
+        const chars = Math.max(1, item.translation.length);
+        const bubbleArea = box.clientWidth * box.clientHeight;
+        const areaFit = Math.sqrt(bubbleArea / (chars * 1.6));
+        const boxFit = estimateFontSize(item.translation, box.clientWidth, box.clientHeight);
+        const chosen = Math.min(areaFit, boxFit, 24) * scale;
+        box.style.fontSize = `${Math.max(8, Math.round(chosen))}px`;
       });
       requestAnimationFrame(() => {
-        boxes.forEach((box) => fitTextToBox(box));
+        boxes.forEach((box) => { shrinkBoxToText(box); fitTextToBox(box); });
         requestAnimationFrame(() => resolveOverlaps(page.overlaysEl));
       });
     });
