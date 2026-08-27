@@ -53,6 +53,19 @@ export async function preloadChapter(chapterUrl, settings, onProgress, isCancell
   await Promise.all(workers);
   return { total: imageUrls.length, translated, cachedCount, failures };
 }
+/** Dense-page heuristic: pages with many boxes or heavy area coverage are
+ * narration/list layouts where in-art overlays always collide. Those get the
+ * side-panel treatment (numbered badges + translations beside the art). */
+export function isDensePage(items) {
+  if (!Array.isArray(items) || items.length === 0) return false;
+  let coverage = 0;
+  for (const it of items) {
+    const [x, y, w, h] = it.bbox;
+    coverage += (w / 1000) * (h / 1000);
+  }
+  return items.length >= 12 || coverage > 0.35;
+}
+
 /** Priority queue running up to `concurrency` tasks at once, lowest index first. */
 export class Scheduler {
   constructor(concurrency = 2) {
@@ -101,8 +114,9 @@ export function estimateFontSize(text, boxW, boxH, minPx = 10, maxPx = 24) {
 
 /** Shrink an overlay box's font until its text fits inside (no clipping).
  * If still overflowing at minPx, grow the box around its center (both axes,
- * keeping a roughly vertical rectangle) staying inside the page bounds. */
-function fitTextToBox(box, minPx = 8) {
+ * keeping a roughly vertical rectangle) staying inside the page bounds.
+ * Growth is skipped when it would collide with a sibling box. */
+function fitTextToBox(box, minPx = 8, siblings = []) {
   const measure = () => {
     const range = document.createRange();
     range.selectNodeContents(box);
@@ -137,16 +151,42 @@ function fitTextToBox(box, minPx = 8) {
   const roomRight = Math.max(0, 100 - (left + width));
   const gLeft = Math.min(growW, roomLeft);
   const gRight = Math.min(growW - gLeft, roomRight);
+  if (siblings.length) {
+    const art = parent.getBoundingClientRect();
+    const nextLeft = left - gLeft;
+    const nextTop = top - gUp;
+    const nextW = width + gLeft + gRight;
+    const nextH = height + gDown + gUp;
+    const candidate = {
+      left: art.left + nextLeft / 100 * parentW,
+      top: art.top + nextTop / 100 * parentH,
+      right: art.left + (nextLeft / 100 * parentW) + nextW / 100 * parentW,
+      bottom: art.top + (nextTop / 100 * parentH) + nextH / 100 * parentH,
+    };
+    if (wouldCollide(candidate, siblings, box)) return;
+  }
   box.style.top = `${top - gUp}%`;
   box.style.height = `${height + gDown + gUp}%`;
   box.style.left = `${left - gLeft}%`;
   box.style.width = `${width + gLeft + gRight}%`;
 }
 
+/** True if a candidate rect would overlap any sibling box (beyond tolerance). */
+function wouldCollide(rect, siblings, self) {
+  for (const sib of siblings) {
+    if (sib === self) continue;
+    const r = sib.getBoundingClientRect();
+    const ox = Math.min(rect.right, r.right) - Math.max(rect.left, r.left);
+    const oy = Math.min(rect.bottom, r.bottom) - Math.max(rect.top, r.top);
+    if (ox > 4 && oy > 4) return true;
+  }
+  return false;
+}
+
 /** Reshape a box into a manga-style vertical rectangle: clamp its width so
  * the box is always taller than wide (aspect <= 0.75), anchored to its right
- * edge where vertical text begins. */
-function enforceVerticalShape(box) {
+ * edge where vertical text begins. Skips growth that would hit a sibling. */
+function enforceVerticalShape(box, siblings = []) {
   const parent = box.parentElement;
   if (!parent) return;
   const parentW = parent.clientWidth || 1;
@@ -171,7 +211,18 @@ function enforceVerticalShape(box) {
   const newLeftPct = left + (boxW - newW) / parentW * 100;
   let newTopPct = top - (newH - boxH) / parentH * 100 / 2;
   newTopPct = Math.max(0, Math.min(newTopPct, 100 - newH / parentH * 100));
-  box.style.left = `${Math.max(0, Math.min(newLeftPct, 100 - newW / parentW * 100))}%`;
+  const nextLeft = Math.max(0, Math.min(newLeftPct, 100 - newW / parentW * 100));
+  if (siblings.length) {
+    const art = box.parentElement.getBoundingClientRect();
+    const candidate = {
+      left: art.left + nextLeft / 100 * parentW,
+      top: art.top + newTopPct / 100 * parentH,
+      right: art.left + (nextLeft / 100 * parentW) + newW,
+      bottom: art.top + (newTopPct / 100 * parentH) + newH,
+    };
+    if (wouldCollide(candidate, siblings, box)) return;
+  }
+  box.style.left = `${nextLeft}%`;
   box.style.width = `${newW / parentW * 100}%`;
   box.style.top = `${newTopPct}%`;
   box.style.height = `${newH / parentH * 100}%`;
@@ -387,6 +438,9 @@ export class Reader {
       page.statusEl.hidden = true;
     } else if (result.renderMode === 'raw' || result.items.length === 0) {
       page.statusEl.hidden = true; // no text on page
+    } else if (isDensePage(result.items)) {
+      this.#renderSidePanel(page, result);
+      page.statusEl.hidden = true;
     } else {
       this.#renderOverlays(page, result);
       page.statusEl.hidden = true;
@@ -439,13 +493,58 @@ export class Reader {
         box.style.fontSize = `${Math.max(8, Math.round(chosen))}px`;
       });
       requestAnimationFrame(() => {
-        boxes.forEach((box) => { enforceVerticalShape(box); shrinkBoxToText(box); fitTextToBox(box); });
+        boxes.forEach((box) => { enforceVerticalShape(box, boxes); shrinkBoxToText(box); fitTextToBox(box, 8, boxes); });
         requestAnimationFrame(() => {
-          boxes.forEach((box) => fitTextToBox(box));
+          boxes.forEach((box) => fitTextToBox(box, 8, boxes));
           resolveOverlaps(page.overlaysEl);
         });
       });
     });
+  }
+
+  /** Dense-page layout: numbered badges on the art, translations in a column
+   * beside the page (swipe horizontally to read). */
+  #renderSidePanel(page, result) {
+    page.el.classList.add('side-mode');
+    page.overlaysEl.innerHTML = '';
+    const entries = result.texts?.length ? result.texts : result.items;
+
+    entries.forEach((item, i) => {
+      const badge = document.createElement('div');
+      badge.className = 'bubble-badge';
+      const [x, y, w, h] = item.bbox || [500, 500, 0, 0];
+      badge.style.left = `${(x + w / 2) / 10}%`;
+      badge.style.top = `${(y + h / 2) / 10}%`;
+      badge.textContent = String(i + 1);
+      badge.addEventListener('click', () => {
+        this.sideEls?.get(page)?.[i]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      });
+      page.overlaysEl.appendChild(badge);
+    });
+
+    const side = document.createElement('div');
+    side.className = 'side-text';
+    const hint = document.createElement('div');
+    hint.className = 'side-hint';
+    hint.textContent = '→ 译文在本页右侧 · 滑动查看 · 点序号跳转';
+    side.appendChild(hint);
+    if (!this.sideEls) this.sideEls = new Map();
+    const els = [];
+    entries.forEach((item, i) => {
+      const entry = document.createElement('div');
+      entry.className = 'side-entry';
+      const num = document.createElement('span');
+      num.className = 'side-num';
+      num.textContent = `${i + 1}`;
+      const cn = document.createElement('div');
+      cn.className = 'cn';
+      cn.textContent = item.translation;
+      entry.append(num, cn);
+      side.appendChild(entry);
+      els.push(entry);
+    });
+    this.sideEls.set(page, els);
+    page.el.appendChild(side);
   }
 
   /** Full-text popup for a dialog (hold on an overlay). */

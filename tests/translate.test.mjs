@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   DEFAULT_PROMPT, normalizeBaseUrl, parseTranslationJSON, validateBboxes, pickRenderMode, apiUrl, buildContextBlock,
 } from '../js/translate.js';
-import { estimateFontSize, Scheduler } from '../js/reader.js';
+import { estimateFontSize, Scheduler, isDensePage } from '../js/reader.js';
 
 test('normalizeBaseUrl: appends /v1 when missing', () => {
   assert.equal(normalizeBaseUrl('https://api.example.com'), 'https://api.example.com/v1');
@@ -127,6 +127,19 @@ test('estimateFontSize: sane bounds', () => {
   assert.ok(small >= 10 && small <= 24);
   assert.ok(long >= 10 && long <= 24);
   assert.ok(long <= small);
+});
+
+test('isDensePage: count and coverage thresholds', () => {
+  const box = (x, y, w, h) => ({ bbox: [x, y, w, h] });
+  assert.equal(isDensePage([]), false);
+  assert.equal(isDensePage([box(0, 0, 100, 100)]), false);
+  // 12+ boxes -> dense (ch192 p0 style)
+  const many = Array.from({ length: 12 }, (_, i) => box(i * 80 % 900, i * 80 % 900, 150, 50));
+  assert.equal(isDensePage(many), true);
+  // few boxes but >35% coverage -> dense
+  assert.equal(isDensePage([box(0, 0, 600, 620)]), true);
+  // few boxes, light coverage -> not dense
+  assert.equal(isDensePage([box(0, 0, 200, 200), box(500, 500, 200, 200)]), false);
 });
 
 test('Scheduler: respects concurrency, lowest index first', async () => {
