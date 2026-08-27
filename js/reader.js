@@ -143,6 +143,40 @@ function fitTextToBox(box, minPx = 8) {
   box.style.width = `${width + gLeft + gRight}%`;
 }
 
+/** Reshape a box into a manga-style vertical rectangle: clamp its width so
+ * the box is always taller than wide (aspect <= 0.75), anchored to its right
+ * edge where vertical text begins. */
+function enforceVerticalShape(box) {
+  const parent = box.parentElement;
+  if (!parent) return;
+  const parentW = parent.clientWidth || 1;
+  const parentH = parent.clientHeight || 1;
+  const left = parseFloat(box.style.left);
+  const top = parseFloat(box.style.top);
+  const width = parseFloat(box.style.width);
+  const height = parseFloat(box.style.height);
+  const boxW = box.clientWidth;
+  const boxH = box.clientHeight;
+  if (boxH > boxW * 1.33) return;
+  const maxW = Math.max(Math.round(boxH * 0.75), Math.round(parseFloat(box.style.fontSize) || 12) * 2);
+  if (boxW <= maxW) return;
+  const newWPx = Math.min(boxW, maxW);
+  const fs = parseFloat(box.style.fontSize) || 12;
+  const charsPerColumn = Math.max(1, Math.floor(boxH / (fs * 1.3)));
+  const columns = Math.ceil((box.textContent || '').length / charsPerColumn);
+  const neededW = Math.max(newWPx, columns * fs * 1.15 + fs * 0.8);
+  const newW = Math.min(boxW, Math.round(neededW));
+  const newHPx = Math.round(newW / 0.75);
+  let newH = Math.max(boxH, Math.min(newHPx, parentH * 0.95));
+  const newLeftPct = left + (boxW - newW) / parentW * 100;
+  let newTopPct = top - (newH - boxH) / parentH * 100 / 2;
+  newTopPct = Math.max(0, Math.min(newTopPct, 100 - newH / parentH * 100));
+  box.style.left = `${Math.max(0, Math.min(newLeftPct, 100 - newW / parentW * 100))}%`;
+  box.style.width = `${newW / parentW * 100}%`;
+  box.style.top = `${newTopPct}%`;
+  box.style.height = `${newH / parentH * 100}%`;
+}
+
 /** Shrink a box whose vertical text occupies only a fraction of its width:
  * clamp the box width to the computed column count, keeping the box's right
  * edge anchored (vertical text starts at the right). */
@@ -405,9 +439,8 @@ export class Reader {
         box.style.fontSize = `${Math.max(8, Math.round(chosen))}px`;
       });
       requestAnimationFrame(() => {
-        boxes.forEach((box) => { shrinkBoxToText(box); fitTextToBox(box); });
+        boxes.forEach((box) => { enforceVerticalShape(box); shrinkBoxToText(box); fitTextToBox(box); });
         requestAnimationFrame(() => {
-          // one more fit pass in case growth ran, then clear collisions
           boxes.forEach((box) => fitTextToBox(box));
           resolveOverlaps(page.overlaysEl);
         });
