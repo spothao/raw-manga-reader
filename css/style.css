@@ -8,6 +8,7 @@
   --accent-2: #4d8de5;
   --ok: #46a758;
   --radius: 10px;
+  --side-w: 230px;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -197,16 +198,30 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   border-bottom: 1px solid var(--surface-2);
 }
 
-.page { position: relative; margin: 0 auto; max-width: 820px; }
+/* every page: fixed art column + fixed side column so horizontal scroll
+   position stays consistent while scrolling vertically */
+.page {
+  position: relative;
+  margin: 0;
+  width: calc(100% + var(--side-w));
+  max-width: calc(820px + var(--side-w));
+}
 .page img {
   display: block;
-  width: 100%;
+  width: calc(100% - var(--side-w));
   height: auto;
   background: #000;
   min-height: 120px;
 }
 
-.overlays { position: absolute; inset: 0; pointer-events: none; }
+.overlays {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% - var(--side-w));
+  height: 100%;
+  pointer-events: none;
+}
 .overlay-box {
   position: absolute;
   display: flex;
@@ -255,14 +270,13 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
 .text-popup .hint { color: var(--text-dim); font-size: 11px; margin-top: 14px; text-align: center; }
 .body-overlay-off .overlays { display: none; }
 
-.page.side-mode { width: calc(100% + 230px); }
-.page.side-mode .side-text {
+.page .side-text {
   position: absolute;
-  left: 100%;
+  left: calc(100% - var(--side-w));
   top: 0;
-  width: 230px;
-  padding: 0 10px;
+  width: var(--side-w);
   box-sizing: border-box;
+  padding: 0 10px;
   background: #161a21;
   border-left: 1px solid var(--surface-2);
 }
@@ -275,8 +289,11 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   border-bottom: 1px solid var(--surface-2);
   font-size: 14px;
   line-height: 1.55;
+  cursor: pointer;
 }
 .side-entry .cn { writing-mode: horizontal-tb; }
+.side-entry:active { background: var(--surface-2); }
+.side-entry.flash-row { background: var(--surface-2); outline: 1px solid var(--accent-2); }
 .side-num {
   flex: 0 0 20px;
   width: 20px;
@@ -307,6 +324,11 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 0 0 2px rgba(0,0,0,0.4);
+}
+.bubble-badge.flash { animation: badge-flash 1.2s ease; }
+@keyframes badge-flash {
+  0%, 100% { transform: scale(1); }
+  25%, 75% { transform: scale(1.6); background: var(--accent); }
 }
 
 .page-status {

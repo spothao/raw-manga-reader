@@ -502,13 +502,18 @@ export class Reader {
     });
   }
 
-  /** Dense-page layout: numbered badges on the art, translations in a column
-   * beside the page (swipe horizontally to read). */
+  /** Dense-page layout: numbered badges on the art, translations in a fixed
+   * column beside the art. Badge ↔ entry clicks cross-highlight each other. */
   #renderSidePanel(page, result) {
     page.el.classList.add('side-mode');
+    page.el.querySelector('.side-text')?.remove();
     page.overlaysEl.innerHTML = '';
-    const entries = result.texts?.length ? result.texts : result.items;
 
+    const positioned = result.items.filter((it) => Array.isArray(it.bbox));
+    const entries = positioned.length ? positioned : (result.texts || []);
+    if (!entries.length) return;
+
+    const badges = [];
     entries.forEach((item, i) => {
       const badge = document.createElement('div');
       badge.className = 'bubble-badge';
@@ -518,15 +523,18 @@ export class Reader {
       badge.textContent = String(i + 1);
       badge.addEventListener('click', () => {
         this.sideEls?.get(page)?.[i]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        this.sideEls?.get(page)?.[i]?.classList.add('flash-row');
+        setTimeout(() => this.sideEls?.get(page)?.[i]?.classList.remove('flash-row'), 1200);
       });
       page.overlaysEl.appendChild(badge);
+      badges.push(badge);
     });
 
     const side = document.createElement('div');
     side.className = 'side-text';
     const hint = document.createElement('div');
     hint.className = 'side-hint';
-    hint.textContent = '→ 译文在本页右侧 · 滑动查看 · 点序号跳转';
+    hint.textContent = '→ 译文列表 · 点序号定位气泡';
     side.appendChild(hint);
     if (!this.sideEls) this.sideEls = new Map();
     const els = [];
@@ -540,6 +548,11 @@ export class Reader {
       cn.className = 'cn';
       cn.textContent = item.translation;
       entry.append(num, cn);
+      entry.addEventListener('click', () => {
+        badges[i]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'center' });
+        badges[i]?.classList.add('flash');
+        setTimeout(() => badges[i]?.classList.remove('flash'), 1300);
+      });
       side.appendChild(entry);
       els.push(entry);
     });
@@ -658,6 +671,8 @@ export class Reader {
       p.done = false;
       p.result = undefined;
       p.overlaysEl.innerHTML = '';
+      p.el.classList.remove('side-mode');
+      p.el.querySelector('.side-text')?.remove();
       p.panelEl.hidden = true;
       p.panelEl.innerHTML = '';
     }
