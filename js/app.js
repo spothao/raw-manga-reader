@@ -237,6 +237,14 @@ $('btn-start-preload').addEventListener('click', async () => {
   log.hidden = false;
   progress.hidden = false;
   log.innerHTML = '';
+  const suspendedNote = document.createElement('div');
+  const onVis = () => {
+    suspendedNote.textContent = document.hidden
+      ? '⚠️ 页面已进入后台，翻译被系统暂停。回到前台自动继续。'
+      : '';
+  };
+  document.addEventListener('visibilitychange', onVis);
+  progress.parentNode.insertBefore(suspendedNote, progress);
 
   const line = (html, cls = '') => {
     const div = document.createElement('div');
@@ -272,6 +280,8 @@ $('btn-start-preload').addEventListener('click', async () => {
     progress.textContent = `总进度：${c + 1}/${urls.length} 章${preloadState.cancel ? '（已停止）' : ''}`;
   }
   try { wakelock.sentinel?.release(); } catch {}
+  document.removeEventListener('visibilitychange', onVis);
+  suspendedNote.textContent = '';
 
   progress.textContent = preloadState.cancel
     ? `已停止。完成 ${okCount} 章。`

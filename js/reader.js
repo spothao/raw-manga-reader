@@ -250,7 +250,22 @@ export class Reader {
 
     for (const p of this.pages) this.observer.observe(p.el);
     this.#requestAround(0);
+    // preloaded chapters: render every cached page immediately (no API calls)
+    // so the whole chapter shows translations, not just the first viewport+lookahead
+    this.#applyAllCached();
     return this.pages.length;
+  }
+
+  async #applyAllCached() {
+    const { cacheGet } = await import('./cache.js');
+    for (let i = 0; i < this.pages.length; i++) {
+      const page = this.pages[i];
+      if (page.done) continue;
+      try {
+        const cached = await cacheGet(page.imageUrl);
+        if (cached) this.#applyResult(i, cached);
+      } catch { /* cache read failure — page will translate on approach */ }
+    }
   }
 
   #buildPage(imageUrl) {
