@@ -13,6 +13,7 @@
   <header id="topbar">
     <button id="btn-home" class="icon-btn" title="首页">📖</button>
     <div id="topbar-title">dokiraw 中文阅读器</div>
+    <span id="app-version" class="hint" style="padding-right:4px">v1.4</span>
     <button id="btn-preload" class="icon-btn" title="批量预载">⚡</button>
     <button id="btn-settings" class="icon-btn" title="设置">⚙️</button>
   </header>
@@ -68,14 +69,12 @@
         <h2>批量预载章节</h2>
         <span style="width:34px"></span>
       </div>
-      <p class="hint">粘贴章节链接（每行一个），或漫画目录链接（如 https://dokiraw.space/manga/xxx）后点「载入章节」勾选。</p>
-      <textarea id="preload-urls" rows="5" placeholder="https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-4&#10;https://dokiraw.space/manga/xie-tohui-nonu-wang" autocapitalize="off" autocorrect="off"></textarea>
+      <p class="hint">粘贴章节链接（每行一个）。将按顺序翻译整章并缓存。完成后自动加入首页历史。</p>
+      <textarea id="preload-urls" rows="8" placeholder="https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-4&#10;https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-5" autocapitalize="off" autocorrect="off"></textarea>
       <div class="url-row" style="margin-top:10px">
-        <button id="btn-load-chapters" class="primary">载入章节</button>
-        <button id="btn-start-preload" class="primary" disabled>开始预载</button>
+        <button id="btn-start-preload" class="primary">开始预载</button>
         <button id="btn-stop-preload" class="danger">停止</button>
       </div>
-      <div id="chapter-picker" class="chapter-picker" hidden></div>
       <div id="preload-progress" class="hint" hidden></div>
       <div id="preload-log" class="preload-log" hidden></div>
     </div>

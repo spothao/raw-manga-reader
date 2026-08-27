@@ -29,7 +29,7 @@ export async function fetchHtmlViaProxy(url, customProxy = '') {
   for (const build of PROXY_BUILDERS(customProxy)) {
     const proxied = build(url);
     try {
-      const res = await fetch(proxied, { redirect: 'follow' });
+      const res = await fetchTimeout(proxied, { redirect: 'follow' }, 45000);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
       if (text && text.length > 200) return text;
@@ -57,14 +57,22 @@ export function imageProxyUrl(url, width = 1280, hostIdx = 0) {
   return u;
 }
 
+/** Fetch with timeout so a stalled request can never hang the pipeline. */
+function fetchTimeout(url, opts = {}, ms = 90000) {
+  return Promise.race([
+    fetch(url, opts),
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`请求超时 (${Math.round(ms / 1000)}s): ${url.slice(0, 60)}`)), ms)),
+  ]);
+}
+
 /** Fetch an image as a data URL (base64). Tries the CDN directly first
  * (dokiraw's image host sends permissive CORS headers), then falls back to
  * image proxies for hosts that block direct browser access. */
 export async function imageToDataUrl(url, width = 1280) {
   const attempts = [
-    () => fetch(url),
-    () => fetch(imageProxyUrl(url, width, 0)),
-    () => fetch(imageProxyUrl(url, width, 1)),
+    () => fetchTimeout(url),
+    () => fetchTimeout(imageProxyUrl(url, width, 0)),
+    () => fetchTimeout(imageProxyUrl(url, width, 1)),
   ];
   let lastErr;
   for (const attempt of attempts) {

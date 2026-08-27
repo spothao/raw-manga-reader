@@ -144,6 +144,11 @@ export async function translatePageImage(page, settings, fetchImpl = fetch, imag
   const models = [settings.model, settings.fallbackModel].filter(Boolean);
   if (!settings.baseUrl || !models.length) throw new Error('未配置 API 地址或模型');
 
+  const apiFetch = (url, opts) => Promise.race([
+    fetchImpl(url, opts),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('API 请求超时 (150s)')), 150000)),
+  ]);
+
   let lastErr = null;
   for (const model of models) {
     try {
@@ -159,7 +164,7 @@ export async function translatePageImage(page, settings, fetchImpl = fetch, imag
         temperature: 0.1,
         max_tokens: 4096,
       };
-      const res = await fetchImpl(apiUrl(settings.baseUrl, settings.apiProxy), {
+      const res = await apiFetch(apiUrl(settings.baseUrl, settings.apiProxy), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

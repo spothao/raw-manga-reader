@@ -210,82 +210,16 @@ $('url-input').addEventListener('keydown', (e) => {
 });
 $('btn-home').addEventListener('click', () => { renderHistory(); show('view-home'); });
 // ---------- batch preload ----------
-const preloadState = { running: false, cancel: false, pickedChapters: [] };
+const preloadState = { running: false, cancel: false };
 
 $('btn-preload').addEventListener('click', () => show('view-preload'));
 $('btn-back-home').addEventListener('click', () => { renderHistory(); show('view-home'); });
 
-$('btn-load-chapters').addEventListener('click', async () => {
-  const raw = $('preload-urls').value.trim();
-  if (!raw) { alert('请先粘贴漫画目录链接'); return; }
-  const info = classifyUrl(raw);
-  if (info.type !== 'manga') { alert('载入章节需要漫画目录链接（如 https://dokiraw.space/manga/xxx），章节链接直接点「开始预载」即可'); return; }
-  const picker = $('chapter-picker');
-  picker.hidden = false;
-  picker.innerHTML = '<div class="hint">章节列表载入中…</div>';
-  try {
-    const html = await fetchHtmlViaProxy(raw, state.settings.customProxy);
-    let chapters = parseChapterLinks(html);
-    if (chapters.length === 0) throw new Error('未能解析章节列表');
-    chapters.sort((a, b) => a.num - b.num);
-    renderChapterPicker(chapters);
-  } catch (e) {
-    picker.innerHTML = '';
-    picker.hidden = true;
-    alert(`载入失败：${e.message || e}`);
-  }
-});
-
-function updateStartButton() {
-  const hasChapterUrl = /dokiraw\.space\/manga\/.+\/chapter-/.test($('preload-urls').value);
-  const hasChecked = !!$('chapter-picker').querySelector('input[type=checkbox]:checked');
-  $('btn-start-preload').disabled = preloadState.running || (!hasChapterUrl && !hasChecked);
-}
-$('preload-urls').addEventListener('input', updateStartButton);
-
-function renderChapterPicker(chapters) {
-  const picker = $('chapter-picker');
-  picker.innerHTML = '';
-  picker.addEventListener('change', updateStartButton);
-  const actions = document.createElement('div');
-  actions.className = 'pick-actions';
-  const allBtn = document.createElement('button');
-  allBtn.textContent = '全选';
-  allBtn.addEventListener('click', () => { picker.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = true); });
-  const noneBtn = document.createElement('button');
-  noneBtn.textContent = '全不选';
-  noneBtn.addEventListener('click', () => { picker.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false); });
-  const latestBtn = document.createElement('button');
-  latestBtn.textContent = '最近 10 话';
-  latestBtn.addEventListener('click', () => {
-    const boxes = [...picker.querySelectorAll('input[type=checkbox]')];
-    boxes.forEach(c => c.checked = false);
-    boxes.slice(-10).forEach(c => c.checked = true);
-  });
-  actions.append(allBtn, noneBtn, latestBtn);
-  picker.appendChild(actions);
-  for (const ch of chapters) {
-    const row = document.createElement('label');
-    row.className = 'pick-row';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.value = absolute(ch.href);
-    row.appendChild(cb);
-    const span = document.createElement('span');
-    span.textContent = ch.label;
-    row.appendChild(span);
-    picker.appendChild(row);
-  }
-}
-
 function collectPreloadUrls() {
-  const direct = $('preload-urls').value
+  return $('preload-urls').value
     .split(/[\n\r]+/)
     .map((s) => s.trim())
     .filter((s) => /^https?:\/\/dokiraw\.space\/manga\/.+\/chapter-/.test(s));
-  const picked = [...$('chapter-picker').querySelectorAll('input[type=checkbox]:checked')]
-    .map((c) => c.value);
-  return [...new Set([...picked, ...direct])];
 }
 
 $('btn-start-preload').addEventListener('click', async () => {
@@ -314,6 +248,10 @@ $('btn-start-preload').addEventListener('click', async () => {
   };
 
   let okCount = 0;
+  const wakelock = { sentinel: null };
+  try {
+    wakelock.sentinel = await navigator.wakeLock?.request('screen');
+  } catch {}
   for (let c = 0; c < urls.length; c++) {
     if (preloadState.cancel) break;
     const url = urls[c];
@@ -333,12 +271,13 @@ $('btn-start-preload').addEventListener('click', async () => {
     }
     progress.textContent = `总进度：${c + 1}/${urls.length} 章${preloadState.cancel ? '（已停止）' : ''}`;
   }
+  try { wakelock.sentinel?.release(); } catch {}
 
   progress.textContent = preloadState.cancel
     ? `已停止。完成 ${okCount} 章。`
     : `全部完成 ✓（${okCount}/${urls.length} 章）`;
   preloadState.running = false;
-  updateStartButton();
+  $('btn-start-preload').disabled = false;
   renderHistory();
 });
 

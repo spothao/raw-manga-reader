@@ -17,7 +17,7 @@ export async function translatePageHeadless(imageUrl, settings) {
 }
 
 /** Preload one chapter URL: fetch HTML, parse pages, translate all headlessly.
- * Reports progress via onProgress(pageIdx, total, pageUrl). Returns summary. */
+ * Reports progress via onProgress(done, total). One retry per failed page. */
 export async function preloadChapter(chapterUrl, settings, onProgress, isCancelled) {
   const { fetchHtmlViaProxy } = await import('./net.js');
   const { parsePageImages } = await import('./scraper.js');
@@ -27,20 +27,27 @@ export async function preloadChapter(chapterUrl, settings, onProgress, isCancell
   let translated = 0;
   let cachedCount = 0;
   const failures = [];
+  let doneCount = 0;
   const queue = [...imageUrls];
   const workers = Array.from({ length: Math.max(1, Math.min(10, Number(settings.concurrency) || 2)) }, async () => {
     while (queue.length) {
       if (isCancelled?.()) return;
       const url = queue.shift();
-      const idx = imageUrls.indexOf(url);
-      try {
+      const attempt = async () => {
         const { cached } = await translatePageHeadless(url, settings);
         if (cached) cachedCount++; else translated++;
-        onProgress?.(translated + cachedCount + failures.length, imageUrls.length, url);
+      };
+      try {
+        await attempt();
       } catch (e) {
-        failures.push({ url, error: String(e.message || e) });
-        onProgress?.(translated + cachedCount + failures.length, imageUrls.length, url);
+        try {
+          await attempt();
+        } catch (e2) {
+          failures.push({ url, error: String(e2.message || e2) });
+        }
       }
+      doneCount++;
+      onProgress?.(doneCount, imageUrls.length, url);
     }
   });
   await Promise.all(workers);
