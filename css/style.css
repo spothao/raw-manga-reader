@@ -108,6 +108,38 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
 .preload-log .ok { color: var(--ok); }
 .preload-log .fail { color: #e5484d; }
 .preload-log .running { color: var(--accent-2); }
+
+.chapter-picker {
+  margin-top: 12px;
+  max-height: 320px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.chapter-picker .pick-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 10px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.chapter-picker .pick-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.chapter-picker .pick-actions button {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid #333b49;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
 .history { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
 .history-item {
   display: flex;

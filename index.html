@@ -53,6 +53,7 @@
       <button id="btn-next-chapter">下一话</button>
     </nav>
     <div class="floating">
+      <button id="btn-retranslate" class="fab" title="重译整章">♻️</button>
       <button id="btn-translate-all" class="fab" title="预翻译整章">⚡</button>
       <button id="btn-retry" class="fab" title="重试失败页面">🔄</button>
       <button id="btn-peek" class="fab" title="按住查看原图">👁</button>
@@ -62,13 +63,19 @@
   <!-- PRELOAD -->
   <main id="view-preload" class="view" hidden>
     <div class="home-card">
-      <h2>批量预载章节</h2>
-      <p class="hint">粘贴一个或多个章节链接（每行一个）。将按顺序翻译整章并缓存。</p>
-      <textarea id="preload-urls" rows="8" placeholder="https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-4&#10;https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-5" autocapitalize="off" autocorrect="off"></textarea>
+      <div class="dialog-head">
+        <button id="btn-back-home" class="close-btn" title="返回">←</button>
+        <h2>批量预载章节</h2>
+        <span style="width:34px"></span>
+      </div>
+      <p class="hint">粘贴章节链接（每行一个），或漫画目录链接（如 https://dokiraw.space/manga/xxx）后点「载入章节」勾选。</p>
+      <textarea id="preload-urls" rows="5" placeholder="https://dokiraw.space/manga/xie-tohui-nonu-wang/chapter-4&#10;https://dokiraw.space/manga/xie-tohui-nonu-wang" autocapitalize="off" autocorrect="off"></textarea>
       <div class="url-row" style="margin-top:10px">
-        <button id="btn-start-preload" class="primary">开始预载</button>
+        <button id="btn-load-chapters" class="primary">载入章节</button>
+        <button id="btn-start-preload" class="primary" disabled>开始预载</button>
         <button id="btn-stop-preload" class="danger">停止</button>
       </div>
+      <div id="chapter-picker" class="chapter-picker" hidden></div>
       <div id="preload-progress" class="hint" hidden></div>
       <div id="preload-log" class="preload-log" hidden></div>
     </div>

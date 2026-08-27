@@ -210,18 +210,89 @@ $('url-input').addEventListener('keydown', (e) => {
 });
 $('btn-home').addEventListener('click', () => { renderHistory(); show('view-home'); });
 // ---------- batch preload ----------
-const preloadState = { running: false, cancel: false };
+const preloadState = { running: false, cancel: false, pickedChapters: [] };
 
 $('btn-preload').addEventListener('click', () => show('view-preload'));
+$('btn-back-home').addEventListener('click', () => { renderHistory(); show('view-home'); });
 
-$('btn-start-preload').addEventListener('click', async () => {
-  if (preloadState.running) return;
-  const urls = $('preload-urls').value
+$('btn-load-chapters').addEventListener('click', async () => {
+  const raw = $('preload-urls').value.trim();
+  if (!raw) { alert('请先粘贴漫画目录链接'); return; }
+  const info = classifyUrl(raw);
+  if (info.type !== 'manga') { alert('载入章节需要漫画目录链接（如 https://dokiraw.space/manga/xxx），章节链接直接点「开始预载」即可'); return; }
+  const picker = $('chapter-picker');
+  picker.hidden = false;
+  picker.innerHTML = '<div class="hint">章节列表载入中…</div>';
+  try {
+    const html = await fetchHtmlViaProxy(raw, state.settings.customProxy);
+    let chapters = parseChapterLinks(html);
+    if (chapters.length === 0) throw new Error('未能解析章节列表');
+    chapters.sort((a, b) => a.num - b.num);
+    renderChapterPicker(chapters);
+  } catch (e) {
+    picker.innerHTML = '';
+    picker.hidden = true;
+    alert(`载入失败：${e.message || e}`);
+  }
+});
+
+function updateStartButton() {
+  const hasChapterUrl = /dokiraw\.space\/manga\/.+\/chapter-/.test($('preload-urls').value);
+  const hasChecked = !!$('chapter-picker').querySelector('input[type=checkbox]:checked');
+  $('btn-start-preload').disabled = preloadState.running || (!hasChapterUrl && !hasChecked);
+}
+$('preload-urls').addEventListener('input', updateStartButton);
+
+function renderChapterPicker(chapters) {
+  const picker = $('chapter-picker');
+  picker.innerHTML = '';
+  picker.addEventListener('change', updateStartButton);
+  const actions = document.createElement('div');
+  actions.className = 'pick-actions';
+  const allBtn = document.createElement('button');
+  allBtn.textContent = '全选';
+  allBtn.addEventListener('click', () => { picker.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = true); });
+  const noneBtn = document.createElement('button');
+  noneBtn.textContent = '全不选';
+  noneBtn.addEventListener('click', () => { picker.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false); });
+  const latestBtn = document.createElement('button');
+  latestBtn.textContent = '最近 10 话';
+  latestBtn.addEventListener('click', () => {
+    const boxes = [...picker.querySelectorAll('input[type=checkbox]')];
+    boxes.forEach(c => c.checked = false);
+    boxes.slice(-10).forEach(c => c.checked = true);
+  });
+  actions.append(allBtn, noneBtn, latestBtn);
+  picker.appendChild(actions);
+  for (const ch of chapters) {
+    const row = document.createElement('label');
+    row.className = 'pick-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = absolute(ch.href);
+    row.appendChild(cb);
+    const span = document.createElement('span');
+    span.textContent = ch.label;
+    row.appendChild(span);
+    picker.appendChild(row);
+  }
+}
+
+function collectPreloadUrls() {
+  const direct = $('preload-urls').value
     .split(/[\n\r]+/)
     .map((s) => s.trim())
     .filter((s) => /^https?:\/\/dokiraw\.space\/manga\/.+\/chapter-/.test(s));
+  const picked = [...$('chapter-picker').querySelectorAll('input[type=checkbox]:checked')]
+    .map((c) => c.value);
+  return [...new Set([...picked, ...direct])];
+}
+
+$('btn-start-preload').addEventListener('click', async () => {
+  if (preloadState.running) return;
+  const urls = collectPreloadUrls();
   if (urls.length === 0) {
-    alert('请输入至少一个有效的章节链接（https://dokiraw.space/manga/.../chapter-...，每行一个）');
+    alert('没有可预载的章节：请粘贴章节链接，或先「载入章节」并勾选');
     return;
   }
   preloadState.running = true;
@@ -242,6 +313,7 @@ $('btn-start-preload').addEventListener('click', async () => {
     return div;
   };
 
+  let okCount = 0;
   for (let c = 0; c < urls.length; c++) {
     if (preloadState.cancel) break;
     const url = urls[c];
@@ -250,8 +322,11 @@ $('btn-start-preload').addEventListener('click', async () => {
       const summary = await preloadChapter(url, state.settings, (done, total) => {
         entry.textContent = `【${c + 1}/${urls.length}】${url} — ${done}/${total} 页`;
       }, () => preloadState.cancel);
+      if (summary.failures.length === 0) okCount++;
       entry.className = summary.failures.length ? 'fail' : 'ok';
       entry.textContent = `【${c + 1}/${urls.length}】${url} — 完成：翻译 ${summary.translated}，缓存 ${summary.cachedCount}，失败 ${summary.failures.length}/${summary.total}`;
+      const label = url.match(/chapter-[^/]+$/)?.[0] || url;
+      addHistory({ url, title: `${state.manga?.title || ''} ${label}`.trim() });
     } catch (e) {
       entry.className = 'fail';
       entry.textContent = `【${c + 1}/${urls.length}】${url} — 失败：${e.message || e}`;
@@ -260,10 +335,11 @@ $('btn-start-preload').addEventListener('click', async () => {
   }
 
   progress.textContent = preloadState.cancel
-    ? `已停止。完成 ${log.querySelectorAll('.ok').length} 章。`
-    : `全部完成 ✓（${urls.length} 章）`;
+    ? `已停止。完成 ${okCount} 章。`
+    : `全部完成 ✓（${okCount}/${urls.length} 章）`;
   preloadState.running = false;
-  $('btn-start-preload').disabled = false;
+  updateStartButton();
+  renderHistory();
 });
 
 $('btn-stop-preload').addEventListener('click', () => {
@@ -378,6 +454,13 @@ $('btn-translate-all').addEventListener('click', () => {
   } else {
     alert(`已开始预翻译整章：${queued}/${total} 页排队中（并发 ${state.settings.concurrency}），进度见顶部进度条。可离开页面但建议保持前台。`);
   }
+});
+
+$('btn-retranslate').addEventListener('click', async () => {
+  if (!state.reader) return;
+  if (!confirm('重译整章：将清除本章缓存并重新翻译全部页面（消耗 API 调用）。继续？')) return;
+  const n = await state.reader.retranslateChapter();
+  alert(`已开始重译整章（${n} 页排队中）`);
 });
 
 $('btn-retry').addEventListener('click', async () => {

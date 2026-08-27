@@ -32,9 +32,11 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return; // pass through cross-origin
   if (e.request.method !== 'GET') return;
-  // network-first so app updates propagate; cache is the offline fallback
+  // network-first with cache bypass so app updates propagate immediately;
+  // cache is only the offline fallback
+  const req = new Request(e.request, { cache: 'no-store' });
   e.respondWith(
-    fetch(e.request)
+    fetch(req)
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});

@@ -509,6 +509,26 @@ export class Reader {
     return { queued, total: this.pages.length };
   }
 
+  /** Clear cached translations for this chapter's pages and re-translate all. */
+  async retranslateChapter() {
+    const { cacheDelete } = await import('./cache.js');
+    await Promise.all(this.pages.map((p) => cacheDelete(p.imageUrl).catch(() => {})));
+    this.scheduler = new Scheduler(this.settings.concurrency);
+    for (const p of this.pages) {
+      p.done = false;
+      p.result = undefined;
+      p.overlaysEl.innerHTML = '';
+      p.panelEl.hidden = true;
+      p.panelEl.innerHTML = '';
+    }
+    let queued = 0;
+    for (let i = 0; i < this.pages.length; i++) {
+      this.#translate(i, { force: true });
+      queued++;
+    }
+    return queued;
+  }
+
   /** Retry every page that is not done (failed or stuck). */
   retryIncomplete() {
     let retried = 0;
