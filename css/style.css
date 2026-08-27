@@ -213,15 +213,17 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 2% 4%;
+  padding: 3% 2%;
   overflow: hidden;
   border-radius: 6px;
-  line-height: 1.25;
+  line-height: 1.3;
   color: #111;
   font-weight: 600;
   word-break: break-word;
   pointer-events: auto;
   cursor: pointer;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 .overlay-box.raised {
   z-index: 10;

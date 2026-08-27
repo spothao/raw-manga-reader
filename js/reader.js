@@ -126,9 +126,9 @@ function fitTextToBox(box, minPx = 8) {
   const top = parseFloat(box.style.top);
   const width = parseFloat(box.style.width);
   const height = parseFloat(box.style.height);
-  const growH = overH / parentH * 100 + 1;
-  const targetW = Math.max(width, Math.min(25, (height + growH) * 0.55)) - width;
-  const growW = Math.max(overW / parentW * 100 + 0.5, targetW > 0 ? targetW : 0);
+  // vertical-rl text: extra columns spill sideways, long columns spill down
+  const growH = Math.max(0, overH / parentH * 100 + 1);
+  const growW = Math.max(0, overW / parentW * 100 + 1);
   const roomBelow = Math.max(0, 100 - (top + height));
   const roomAbove = Math.max(0, top);
   const gDown = Math.min(growH, roomBelow);
@@ -143,9 +143,9 @@ function fitTextToBox(box, minPx = 8) {
   box.style.width = `${width + gLeft + gRight}%`;
 }
 
-/** Shrink a box whose text occupies only a fraction of it: scale the box
- * down around its center while PRESERVING its aspect ratio (manga bubbles
- * are tall rectangles; turning them wide causes neighbor collisions). */
+/** Shrink a box whose vertical text occupies only a fraction of its width:
+ * clamp the box width to the computed column count, keeping the box's right
+ * edge anchored (vertical text starts at the right). */
 function shrinkBoxToText(box) {
   const text = box.textContent || '';
   if (!text) return;
@@ -154,30 +154,16 @@ function shrinkBoxToText(box) {
   const fs = parseFloat(box.style.fontSize) || 12;
   const boxW = box.clientWidth;
   const boxH = box.clientHeight;
-  const aspect = boxW / boxH;
-  const charW = fs;
-  const charsPerLine = Math.max(1, Math.floor(boxW / charW));
-  const lines = Math.ceil(text.length / charsPerLine);
-  const textH = lines * fs * 1.3;
-  if (boxH <= textH * 1.35) return;
-  let newH = Math.min(boxH, Math.ceil(textH + fs * 0.8));
-  let newW = Math.round(newH * aspect);
-  newW = Math.min(newW, boxW);
-  newH = Math.round(newW / aspect);
+  const charsPerColumn = Math.max(1, Math.floor(boxH / (fs * 1.3)));
+  const columns = Math.ceil(text.length / charsPerColumn);
+  const textW = columns * fs * 1.15;
+  if (boxW <= textW * 1.35) return;
+  const newW = Math.min(boxW, Math.ceil(textW + fs * 0.8));
   const parentW = parent.clientWidth || 1;
-  const parentH = parent.clientHeight || 1;
   const leftPct = parseFloat(box.style.left);
-  const topPct = parseFloat(box.style.top);
-  let newLeftPct = leftPct + (boxW - newW) / 2 / parentW * 100;
-  if (leftPct + boxW / parentW * 100 > 85) {
-    newLeftPct = leftPct + (boxW - newW) / parentW * 100;
-  }
-  newLeftPct = Math.max(0, Math.min(newLeftPct, 100 - newW / parentW * 100));
-  const newTopPct = topPct + (boxH - newH) / 2 / parentH * 100;
-  box.style.left = `${newLeftPct}%`;
-  box.style.top = `${Math.max(0, newTopPct)}%`;
+  const newLeftPct = leftPct + (boxW - newW) / parentW * 100;
+  box.style.left = `${Math.max(0, Math.min(newLeftPct, 100 - newW / parentW * 100))}%`;
   box.style.width = `${newW / parentW * 100}%`;
-  box.style.height = `${newH / parentH * 100}%`;
 }
 function resolveOverlaps(overlaysEl) {
   const boxes = [...overlaysEl.querySelectorAll('.overlay-box')];
