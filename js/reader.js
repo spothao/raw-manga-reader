@@ -104,12 +104,19 @@ export class Scheduler {
   }
 }
 
-/** Fit a font size to a box given text length. Pure. */
+/** Tiered manga font sizing: short punchy lines get big type, long narration
+ * gets small type — mirroring professional manga lettering contrast.
+ * Returns px, bounded by the box's geometric capacity. */
 export function estimateFontSize(text, boxW, boxH, minPx = 10, maxPx = 24) {
   const len = Math.max(1, (text || '').length);
   const area = Math.max(1, boxW * boxH);
-  let px = Math.sqrt(area / (len * 1.7));
-  return Math.round(Math.min(maxPx, Math.max(minPx, px)));
+  const capacity = Math.sqrt(area / (len * 1.6));
+  let tier;
+  if (len <= 4) tier = 1.35;
+  else if (len <= 10) tier = 1.0;
+  else if (len <= 18) tier = 0.82;
+  else tier = 0.68;
+  return Math.round(Math.min(maxPx, Math.max(minPx, capacity * tier)));
 }
 
 /** Shrink an overlay box's font until its text fits inside (no clipping).
@@ -451,6 +458,7 @@ export class Reader {
   }
 
   #renderOverlays(page, result) {
+    const idx = this.pages.indexOf(page);
     page.overlaysEl.innerHTML = '';
     const opacity = Number(this.settings.patchOpacity) || 0.92;
     const scale = Number(this.settings.fontScale) || 1;
@@ -471,7 +479,7 @@ export class Reader {
       });
       let holdTimer = null;
       box.addEventListener('pointerdown', (ev) => {
-        holdTimer = setTimeout(() => { holdTimer = null; this.#showTextPopup(item); }, 550);
+        holdTimer = setTimeout(() => { holdTimer = null; this.#showTextPopup(item, idx); }, 550);
       });
       const cancelHold = () => { if (holdTimer) clearTimeout(holdTimer); holdTimer = null; };
       box.addEventListener('pointerup', cancelHold);
@@ -489,7 +497,7 @@ export class Reader {
         const bubbleArea = box.clientWidth * box.clientHeight;
         const areaFit = Math.sqrt(bubbleArea / (chars * 1.6));
         const boxFit = estimateFontSize(item.translation, box.clientWidth, box.clientHeight);
-        const chosen = Math.min(areaFit, boxFit, 24) * scale;
+        const chosen = Math.min(areaFit, boxFit, 30) * scale;
         box.style.fontSize = `${Math.max(8, Math.round(chosen))}px`;
       });
       requestAnimationFrame(() => {
@@ -561,7 +569,7 @@ export class Reader {
   }
 
   /** Full-text popup for a dialog (hold on an overlay). */
-  #showTextPopup(item) {
+  #showTextPopup(item, pageIdx) {
     const overlay = document.createElement('div');
     overlay.className = 'text-popup';
     const card = document.createElement('div');
@@ -576,6 +584,20 @@ export class Reader {
       jp.textContent = item.original;
       card.appendChild(jp);
     }
+    const actions = document.createElement('div');
+    actions.className = 'popup-actions';
+    const flagBtn = document.createElement('button');
+    flagBtn.type = 'button';
+    flagBtn.textContent = '翻译不准，标记重译';
+    flagBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (Number.isInteger(pageIdx) && this.pages[pageIdx]) {
+        this.#flagPage(pageIdx);
+      }
+      overlay.remove();
+    });
+    actions.appendChild(flagBtn);
+    card.appendChild(actions);
     const hint = document.createElement('div');
     hint.className = 'hint';
     hint.textContent = '点击任意处关闭';
@@ -583,6 +605,25 @@ export class Reader {
     overlay.appendChild(card);
     overlay.addEventListener('click', () => overlay.remove());
     document.body.appendChild(overlay);
+  }
+
+  #flagKey(imageUrl) { return `dokiraw-flag:${imageUrl}`; }
+
+  #flagPage(idx) {
+    const page = this.pages[idx];
+    if (!page) return;
+    localStorage.setItem(this.#flagKey(page.imageUrl), '1');
+    page.statusEl.hidden = false;
+    page.statusEl.textContent = '⚑ 已标记';
+    page.statusEl.title = '该页已标记为翻译不准；♻️ 重译将优先处理';
+  }
+
+  isPageFlagged(imageUrl) {
+    return !!localStorage.getItem(this.#flagKey(imageUrl));
+  }
+
+  clearFlag(imageUrl) {
+    localStorage.removeItem(this.#flagKey(imageUrl));
   }
 
   /** Re-apply font scale to every rendered overlay (no re-translation). */
@@ -662,9 +703,16 @@ export class Reader {
     return { queued, total: this.pages.length };
   }
 
-  /** Clear cached translations for this chapter's pages and re-translate all. */
+  /** Clear cached translations for this chapter's pages and re-translate all.
+   * Flagged (marked inaccurate) pages are cleared and re-queued first. */
   async retranslateChapter() {
     const { cacheDelete } = await import('./cache.js');
+    const flagged = [];
+    const rest = [];
+    this.pages.forEach((p, i) => {
+      (this.isPageFlagged(p.imageUrl) ? flagged : rest).push(i);
+    });
+    const order = [...flagged, ...rest];
     await Promise.all(this.pages.map((p) => cacheDelete(p.imageUrl).catch(() => {})));
     this.scheduler = new Scheduler(this.settings.concurrency);
     for (const p of this.pages) {
@@ -676,12 +724,13 @@ export class Reader {
       p.panelEl.hidden = true;
       p.panelEl.innerHTML = '';
     }
+    this.pages.forEach((p) => this.clearFlag(p.imageUrl));
     let queued = 0;
-    for (let i = 0; i < this.pages.length; i++) {
+    for (const i of order) {
       this.#translate(i, { force: true });
       queued++;
     }
-    return queued;
+    return { queued, flagged: flagged.length };
   }
 
   /** Retry every page that is not done (failed or stuck). */

@@ -10,6 +10,7 @@ export const DEFAULTS = {
   customProxy: '',
   apiProxy: '',
   fontScale: 1,
+  pageDim: 1,
   patchOpacity: 0.92,
   promptTemplate: '',   // empty = DEFAULT_PROMPT
 };

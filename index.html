@@ -8,12 +8,13 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css">
 </head>
 <body>
   <header id="topbar">
     <button id="btn-home" class="icon-btn" title="首页">📖</button>
     <div id="topbar-title">dokiraw 中文阅读器</div>
-    <span id="app-version" class="hint" style="padding-right:4px">v2.0</span>
+    <span id="app-version" class="hint" style="padding-right:4px">v2.1</span>
     <button id="btn-preload" class="icon-btn" title="批量预载">⚡</button>
     <button id="btn-settings" class="icon-btn" title="设置">⚙️</button>
   </header>
@@ -119,6 +120,9 @@
       </label>
       <label>译文大小（全局缩放 0.5-1.8，阅读页也可用 A− / A+ 调整）
         <input name="fontScale" type="number" min="0.5" max="1.8" step="0.05" value="1">
+      </label>
+      <label>漫画页调暗（夜间护眼，0.5-1）
+        <input name="pageDim" type="number" min="0.5" max="1" step="0.05" value="1">
       </label>
       <details>
         <summary>翻译 Prompt（高级）</summary>

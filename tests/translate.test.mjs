@@ -121,12 +121,15 @@ test('DEFAULT_PROMPT contains {LANG} placeholder', () => {
   assert.ok(DEFAULT_PROMPT.includes('{LANG}'));
 });
 
-test('estimateFontSize: sane bounds', () => {
-  const small = estimateFontSize('短', 60, 30);
-  const long = estimateFontSize('这是一段非常长的漫画对话文本需要放进气泡里', 60, 30);
-  assert.ok(small >= 10 && small <= 24);
-  assert.ok(long >= 10 && long <= 24);
-  assert.ok(long <= small);
+test('estimateFontSize: tiered sizing — short text bigger, long text smaller', () => {
+  const W = 100, H = 120; // same bubble for all
+  const shout = estimateFontSize('去死!!', W, H);
+  const talk = estimateFontSize('你到底是什么人？', W, H);
+  const narrate = estimateFontSize('这是一个非常漫长的故事的开头部分', W, H);
+  assert.ok(shout >= talk, `shout ${shout} should be >= talk ${talk}`);
+  assert.ok(talk > narrate, `talk ${talk} should be > narrate ${narrate}`);
+  assert.ok(narrate >= 10, 'narrate respects min');
+  assert.ok(shout <= 24, 'shout respects max');
 });
 
 test('isDensePage: count and coverage thresholds', () => {

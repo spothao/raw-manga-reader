@@ -151,7 +151,8 @@ function renderHistory() {
     x.addEventListener('click', (ev) => {
       ev.stopPropagation();
       removeHistory(item.url);
-      renderHistory();
+renderHistory();
+applyPageDim();
     });
     row.appendChild(x);
     row.addEventListener('click', () => loadUrl(item.url));
@@ -173,11 +174,16 @@ function openSettings() {
   f.apiProxy.value = s.apiProxy;
   f.patchOpacity.value = s.patchOpacity;
   f.fontScale.value = s.fontScale ?? 1;
+  f.pageDim.value = s.pageDim ?? 1;
   f.promptTemplate.value = s.promptTemplate || DEFAULT_PROMPT;
   cacheCount().then((n) => {
     $('btn-clear-cache').textContent = `清除翻译缓存（${n} 页）`;
   }).catch(() => {});
   $('settings-dialog').showModal();
+}
+
+function applyPageDim() {
+  document.documentElement.style.setProperty('--page-dim', String(state.settings.pageDim ?? 1));
 }
 
 function saveSettingsFromForm() {
@@ -194,9 +200,11 @@ function saveSettingsFromForm() {
     apiProxy: f.apiProxy.value.trim(),
     patchOpacity: clampNum(f.patchOpacity.value, 0.5, 1, 0.92),
     fontScale: clampNum(f.fontScale.value, 0.5, 1.8, 1),
+    pageDim: clampNum(f.pageDim.value, 0.5, 1, 1),
     promptTemplate: prompt === DEFAULT_PROMPT ? '' : prompt,
   });
   state.settings = loadSettings();
+  applyPageDim();
   if (state.reader) {
     state.reader.settings = state.settings;
     state.reader.rerenderOverlays();
@@ -408,8 +416,8 @@ $('btn-translate-all').addEventListener('click', () => {
 $('btn-retranslate').addEventListener('click', async () => {
   if (!state.reader) return;
   if (!confirm('重译整章：将清除本章缓存并重新翻译全部页面（消耗 API 调用）。继续？')) return;
-  const n = await state.reader.retranslateChapter();
-  alert(`已开始重译整章（${n} 页排队中）`);
+  const { queued, flagged } = await state.reader.retranslateChapter();
+  alert(`已开始重译整章（${queued} 页排队${flagged ? `，其中 ${flagged} 页为已标记的不准页面，优先处理` : ''}）`);
 });
 
 $('btn-retry').addEventListener('click', async () => {
