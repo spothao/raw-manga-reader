@@ -25,7 +25,8 @@ const PROXY_BUILDERS = (custom) => {
  * @returns {Promise<string>} response text
  */
 export async function fetchHtmlViaProxy(rawUrl, customProxy = '') {
-  const url = rawUrl.replace(/\/+$/, '');
+  // normalize: strip trailing slashes and www. (the www host is flaky upstream)
+  const url = rawUrl.replace(/\/+$/, '').replace(/^(https?:\/\/)www\./, '$1');
   const errors = [];
   for (const build of PROXY_BUILDERS(customProxy)) {
     const proxied = build(url);
