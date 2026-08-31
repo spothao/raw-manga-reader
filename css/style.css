@@ -379,13 +379,22 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   width: calc(100% + var(--side-w));
   max-width: calc(820px + var(--side-w));
   margin: 0;
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  padding: 0;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+.chapter-nav .nav-row {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--surface-2);
+  padding: 8px 10px 4px;
+  width: calc(100% - var(--side-w));
 }
-.chapter-nav .nav-row { display: flex; gap: 6px; }
-.chapter-nav .nav-row + .nav-row { margin-top: 6px; }
+.chapter-nav .nav-row + .nav-row { padding: 0 10px calc(8px + env(safe-area-inset-bottom)); }
 .chapter-nav .tool-row button {
   flex: 1;
   font-size: 13px;
