@@ -1,13 +1,13 @@
 // scraper.js — parse dokiraw.space HTML. Pure functions (node-testable).
 
-const SITE = 'dokiraw.space';
+const SITES = ['dokiraw.space', 'dokiraw.casa'];
 
 /** Classify a dokiraw URL.
  * @returns {{type:'manga'|'chapter'|'unknown', slug?:string, chapter?:string}} */
 export function classifyUrl(raw) {
   let u;
   try { u = new URL(raw); } catch { return { type: 'unknown' }; }
-  if (!u.hostname.includes(SITE)) return { type: 'unknown' };
+  if (!SITES.some((s) => u.hostname.includes(s))) return { type: 'unknown' };
   const m = u.pathname.match(/^\/manga\/([^/]+)\/(chapter-[^/]+)\/?$/);
   if (m) return { type: 'chapter', slug: m[1], chapter: m[2] };
   const mm = u.pathname.match(/^\/manga\/([^/]+)\/?$/);
@@ -16,11 +16,12 @@ export function classifyUrl(raw) {
 }
 
 /** Extract chapter links from a manga page HTML. Newest-first order preserved.
- * Handles both quoted (href="...") and unquoted (href=...) attributes.
+ * Handles both quoted (href="...") and unquoted (href=...) attributes, and
+ * both dokiraw.space and dokiraw.casa domains.
  * @returns {Array<{href:string,label:string,num:number}>} */
 export function parseChapterLinks(html) {
   const out = new Map();
-  const re = /href=["']?((?:https?:\/\/[^"'\s>]*?dokiraw\.space))?\/manga\/([^/"'\s>]+)\/(chapter-[^"'\/\s>#]+)\/?["']?[^>]*>([^<]*)</g;
+  const re = /href=["']?((?:https?:\/\/[^"'\s>]*?dokiraw\.(?:space|casa))?)\/manga\/([^/"'\s>]+)\/(chapter-[^"'\/\s>#]+)\/?["']?[^>]*>([^<]*)</g;
   let m;
   while ((m = re.exec(html)) !== null) {
     const [, base, slug, chapter] = m;

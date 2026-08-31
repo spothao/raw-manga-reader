@@ -1,11 +1,11 @@
 // app.js — entry point: view routing, URL loading, settings UI, history.
 
-import { fetchHtmlViaProxy } from './net.js?v=2.2';
-import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.2';
-import { Reader, preloadChapter } from './reader.js?v=2.2';
-import { DEFAULT_PROMPT } from './translate.js?v=2.2';
-import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.2';
-import { cacheClear, cacheCount } from './cache.js?v=2.2';
+import { fetchHtmlViaProxy } from './net.js?v=2.3';
+import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.3';
+import { Reader, preloadChapter } from './reader.js?v=2.3';
+import { DEFAULT_PROMPT } from './translate.js?v=2.3';
+import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.3';
+import { cacheClear, cacheCount } from './cache.js?v=2.3';
 
 const $ = (id) => document.getElementById(id);
 
@@ -43,7 +43,7 @@ async function loadUrl(rawUrl) {
   clearError();
   const info = classifyUrl(rawUrl.trim());
   if (info.type === 'unknown') {
-    showError('无法识别该链接，请粘贴 dokiraw.space 的漫画页或章节页 URL。');
+    showError('无法识别该链接，请粘贴 dokiraw 漫画页或章节页 URL。');
     return;
   }
   $('btn-load').disabled = true;
@@ -53,7 +53,7 @@ async function loadUrl(rawUrl) {
       await openManga(rawUrl.trim());
     } else {
       // chapter URL — need the manga page first for navigation
-      const mangaUrl = `https://dokiraw.space/manga/${info.slug}`;
+      const mangaUrl = `https://dokiraw.space/manga/${info.slug}`; // old domain still serves; new links point to .casa
       try {
         await openManga(mangaUrl, { silent: true });
       } catch { /* chapter nav may be unavailable; still read */ }
@@ -96,7 +96,7 @@ function renderChapterGrid() {
 }
 
 function absolute(href) {
-  return href.startsWith('http') ? href : `https://dokiraw.space${href}`;
+  return href.startsWith('http') ? href : `https://dokiraw.space${href}`; // relative links normalized to legacy domain
 }
 
 function normalizeChapterUrl(u) {
@@ -240,7 +240,7 @@ function collectPreloadUrls() {
   return $('preload-urls').value
     .split(/[\n\r]+/)
     .map((s) => s.trim())
-    .filter((s) => /^https?:\/\/dokiraw\.space\/manga\/.+\/chapter-/.test(s));
+    .filter((s) => /^https?:\/\/dokiraw\.(space|casa)\/manga\/.+\/chapter-/.test(s));
 }
 
 $('btn-start-preload').addEventListener('click', async () => {

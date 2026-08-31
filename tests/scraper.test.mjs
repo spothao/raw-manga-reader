@@ -51,6 +51,14 @@ test('parseChapterLinks: extracts, dedupes, parses nums', () => {
   assert.equal(links.find((l) => l.num === 1).href, '/manga/xie-tohui-nonu-wang/chapter-1');
 });
 
+test('parseChapterLinks: dokiraw.casa domain (site migrated domains)', () => {
+  const html = `<a href=https://dokiraw.casa/manga/foo-bar/chapter-5>第5話</a>`;
+  const links = parseChapterLinks(html);
+  assert.equal(links.length, 1);
+  assert.equal(links[0].href, 'https://dokiraw.casa/manga/foo-bar/chapter-5');
+  assert.equal(links[0].num, 5);
+});
+
 test('parsePageImages: page_N images only, deduped, in order', () => {
   const imgs = parsePageImages(CHAPTER_HTML);
   assert.equal(imgs.length, 3);
