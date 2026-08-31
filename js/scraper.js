@@ -7,7 +7,8 @@ const SITES = ['dokiraw.space', 'dokiraw.casa'];
 export function classifyUrl(raw) {
   let u;
   try { u = new URL(raw); } catch { return { type: 'unknown' }; }
-  if (!SITES.some((s) => u.hostname.includes(s))) return { type: 'unknown' };
+  const host = u.hostname.toLowerCase().replace(/^www\./, '');
+  if (!SITES.some((s) => host === s || host.endsWith(`.${s}`))) return { type: 'unknown' };
   const m = u.pathname.match(/^\/manga\/([^/]+)\/(chapter-[^/]+)\/?$/);
   if (m) return { type: 'chapter', slug: m[1], chapter: m[2] };
   const mm = u.pathname.match(/^\/manga\/([^/]+)\/?$/);

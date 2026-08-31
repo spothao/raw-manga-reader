@@ -9,7 +9,7 @@
 //      abused as an open proxy.
 
 const API_TARGET = 'https://api.ilmu.ai';
-const HTML_TARGETS = ['https://dokiraw.space', 'https://dokiraw.casa'];
+const HTML_TARGETS = [/^https?:\/\/([a-z0-9-]+\.)*dokiraw\.(space|casa)\/.*$/i];
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -43,7 +43,7 @@ export default {
 
     if (url.pathname === '/html') {
       const target = url.searchParams.get('url');
-      if (!target || !HTML_TARGETS.some((t) => target.startsWith(t))) {
+      if (!target || !HTML_TARGETS.some((re) => re.test(target))) {
         return new Response('bad target', { status: 403, headers: CORS });
       }
       const upstream = await fetch(target, {

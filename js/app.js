@@ -1,11 +1,11 @@
 // app.js — entry point: view routing, URL loading, settings UI, history.
 
-import { fetchHtmlViaProxy } from './net.js?v=2.4';
-import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.4';
-import { Reader, preloadChapter } from './reader.js?v=2.4';
-import { DEFAULT_PROMPT } from './translate.js?v=2.4';
-import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.4';
-import { cacheClear, cacheCount } from './cache.js?v=2.4';
+import { fetchHtmlViaProxy } from './net.js?v=2.5';
+import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.5';
+import { Reader, preloadChapter } from './reader.js?v=2.5';
+import { DEFAULT_PROMPT } from './translate.js?v=2.5';
+import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.5';
+import { cacheClear, cacheCount } from './cache.js?v=2.5';
 
 const $ = (id) => document.getElementById(id);
 
