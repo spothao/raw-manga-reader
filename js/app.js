@@ -1,11 +1,11 @@
 // app.js — entry point: view routing, URL loading, settings UI, history.
 
-import { fetchHtmlViaProxy } from './net.js';
-import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js';
-import { Reader, preloadChapter } from './reader.js';
-import { DEFAULT_PROMPT } from './translate.js';
-import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js';
-import { cacheClear, cacheCount } from './cache.js';
+import { fetchHtmlViaProxy } from './net.js?v=2.2';
+import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.2';
+import { Reader, preloadChapter } from './reader.js?v=2.2';
+import { DEFAULT_PROMPT } from './translate.js?v=2.2';
+import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.2';
+import { cacheClear, cacheCount } from './cache.js?v=2.2';
 
 const $ = (id) => document.getElementById(id);
 
@@ -99,14 +99,28 @@ function absolute(href) {
   return href.startsWith('http') ? href : `https://dokiraw.space${href}`;
 }
 
+function normalizeChapterUrl(u) {
+  return u.replace(/\/+$/, '');
+}
+
 async function openChapterByHref(href) {
-  const idx = state.chapters.findIndex((c) => absolute(c.href) === href);
-  if (idx >= 0) {
-    state.currentChapterIdx = idx;
-    $('btn-prev-chapter').disabled = idx <= 0;
-    $('btn-next-chapter').disabled = idx >= state.chapters.length - 1;
+  const target = normalizeChapterUrl(href);
+  let idx = state.chapters.findIndex((c) => normalizeChapterUrl(absolute(c.href)) === target);
+  if (idx === -1) {
+    // chapter not in the loaded list — (re)load its manga page so prev/next work
+    const slug = target.match(/\/manga\/([^/]+)\/chapter-/)?.[1];
+    if (slug) {
+      try {
+        await openManga(`https://dokiraw.space/manga/${slug}`, { silent: true });
+        idx = state.chapters.findIndex((c) => normalizeChapterUrl(absolute(c.href)) === target);
+      } catch { /* nav stays disabled; chapter still opens below */ }
+    }
   }
-  const label = idx >= 0 ? state.chapters[idx].label : '';
+  state.currentChapterIdx = idx;
+  const hasNav = idx >= 0 && state.chapters.length > 0;
+  $('btn-prev-chapter').disabled = !hasNav || idx <= 0;
+  $('btn-next-chapter').disabled = !hasNav || idx >= state.chapters.length - 1;
+  const label = hasNav ? state.chapters[idx].label : '';
   document.body.classList.remove('body-overlay-off');
   state.reader?.setOverlayVisible?.(true);
   $('btn-toggle-overlay').textContent = '隐藏译文';
@@ -118,9 +132,8 @@ async function openChapterByHref(href) {
     state.reader = new Reader($('pages'), $('reader-progress'), state.settings);
   }
   try {
-    const n = await state.reader.openChapter(href, `${state.manga?.title || ''} ${label}`.trim());
-    addHistory({ url: href, title: `${state.manga?.title || ''} ${label}`.trim() });
-    void n;
+    await state.reader.openChapter(target, `${state.manga?.title || ''} ${label}`.trim());
+    addHistory({ url: target, title: `${state.manga?.title || ''} ${label}`.trim() });
   } catch (e) {
     $('pages').innerHTML = '';
     const el = $('reader-error');
@@ -324,11 +337,11 @@ $('btn-first-chapter').addEventListener('click', () => {
 
 $('btn-prev-chapter').addEventListener('click', () => {
   const i = state.currentChapterIdx - 1;
-  if (i >= 0) openChapterByHref(absolute(state.chapters[i].href));
+  if (i >= 0 && i < state.chapters.length) openChapterByHref(absolute(state.chapters[i].href));
 });
 $('btn-next-chapter').addEventListener('click', () => {
   const i = state.currentChapterIdx + 1;
-  if (i < state.chapters.length) openChapterByHref(absolute(state.chapters[i].href));
+  if (i >= 0 && i < state.chapters.length) openChapterByHref(absolute(state.chapters[i].href));
 });
 
 $('btn-toggle-overlay').addEventListener('click', () => {

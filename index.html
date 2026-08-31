@@ -48,18 +48,20 @@
     <div id="pages"></div>
     <div id="reader-error" class="error" hidden></div>
     <nav class="chapter-nav">
-      <button id="btn-prev-chapter">上一话</button>
-      <button id="btn-font-smaller" title="缩小字体">A−</button>
-      <button id="btn-toggle-overlay" class="primary">隐藏译文</button>
-      <button id="btn-font-bigger" title="放大字体">A+</button>
-      <button id="btn-next-chapter">下一话</button>
+      <div class="nav-row">
+        <button id="btn-prev-chapter">上一话</button>
+        <button id="btn-font-smaller" title="缩小字体">A−</button>
+        <button id="btn-toggle-overlay" class="primary">隐藏译文</button>
+        <button id="btn-font-bigger" title="放大字体">A+</button>
+        <button id="btn-next-chapter">下一话</button>
+      </div>
+      <div class="nav-row tool-row">
+        <button id="btn-retranslate" title="重译整章">♻️ 重译</button>
+        <button id="btn-translate-all" title="预翻译整章">⚡ 预翻</button>
+        <button id="btn-retry" title="重试失败页面">🔄 重试</button>
+        <button id="btn-peek" title="按住查看原图">👁 原图</button>
+      </div>
     </nav>
-    <div class="floating">
-      <button id="btn-retranslate" class="fab" title="重译整章">♻️</button>
-      <button id="btn-translate-all" class="fab" title="预翻译整章">⚡</button>
-      <button id="btn-retry" class="fab" title="重试失败页面">🔄</button>
-      <button id="btn-peek" class="fab" title="按住查看原图">👁</button>
-    </div>
   </main>
 
   <!-- PRELOAD -->
@@ -150,6 +152,6 @@
     </section>
   </template>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=2.2"></script>
 </body>
 </html>
