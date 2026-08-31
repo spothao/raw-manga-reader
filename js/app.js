@@ -100,7 +100,9 @@ function absolute(href) {
 }
 
 function normalizeChapterUrl(u) {
-  return u.replace(/\/+$/, '');
+  return u
+    .replace(/\/+$/, '')
+    .replace(/^https?:\/\/dokiraw\.(space|casa)/, '');
 }
 
 async function openChapterByHref(href) {
