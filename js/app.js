@@ -1,11 +1,11 @@
 // app.js — entry point: view routing, URL loading, settings UI, history.
 
-import { fetchHtmlViaProxy } from './net.js?v=2.3';
-import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.3';
-import { Reader, preloadChapter } from './reader.js?v=2.3';
-import { DEFAULT_PROMPT } from './translate.js?v=2.3';
-import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.3';
-import { cacheClear, cacheCount } from './cache.js?v=2.3';
+import { fetchHtmlViaProxy } from './net.js?v=2.4';
+import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.4';
+import { Reader, preloadChapter } from './reader.js?v=2.4';
+import { DEFAULT_PROMPT } from './translate.js?v=2.4';
+import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.4';
+import { cacheClear, cacheCount } from './cache.js?v=2.4';
 
 const $ = (id) => document.getElementById(id);
 
@@ -41,23 +41,24 @@ function clearError() { $('error-banner').hidden = true; }
 /* ---------- loading ---------- */
 async function loadUrl(rawUrl) {
   clearError();
-  const info = classifyUrl(rawUrl.trim());
+  const info = classifyUrl(rawUrl.trim().replace(/\/+$/, ''));
   if (info.type === 'unknown') {
     showError('无法识别该链接，请粘贴 dokiraw 漫画页或章节页 URL。');
     return;
   }
   $('btn-load').disabled = true;
   $('btn-load').textContent = '读取中…';
+  const cleanUrl = rawUrl.trim().replace(/\/+$/, '');
   try {
     if (info.type === 'manga') {
-      await openManga(rawUrl.trim());
+      await openManga(cleanUrl);
     } else {
       // chapter URL — need the manga page first for navigation
-      const mangaUrl = `https://dokiraw.space/manga/${info.slug}`; // old domain still serves; new links point to .casa
+      const mangaUrl = `https://dokiraw.space/manga/${info.slug}`;
       try {
         await openManga(mangaUrl, { silent: true });
       } catch { /* chapter nav may be unavailable; still read */ }
-      await openChapterByHref(rawUrl.trim());
+      await openChapterByHref(cleanUrl);
     }
   } catch (e) {
     showError(String(e.message || e));
@@ -149,6 +150,7 @@ function renderHistory() {
   const list = loadHistory();
   const el = $('history-list');
   el.innerHTML = '';
+  $('btn-clear-history').hidden = list.length === 0;
   if (!list.length) return;
   const h = document.createElement('div');
   h.className = 'hint';
@@ -174,6 +176,12 @@ applyPageDim();
     el.appendChild(row);
   }
 }
+
+$('btn-clear-history').addEventListener('click', () => {
+  if (!confirm('清除全部阅读历史？此操作不可恢复。')) return;
+  localStorage.removeItem('dokiraw-history');
+  renderHistory();
+});
 
 /* ---------- settings ---------- */
 function openSettings() {

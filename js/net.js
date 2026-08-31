@@ -24,7 +24,8 @@ const PROXY_BUILDERS = (custom) => {
  * Fetch a cross-origin URL's text through a chain of CORS proxies.
  * @returns {Promise<string>} response text
  */
-export async function fetchHtmlViaProxy(url, customProxy = '') {
+export async function fetchHtmlViaProxy(rawUrl, customProxy = '') {
+  const url = rawUrl.replace(/\/+$/, '');
   const errors = [];
   for (const build of PROXY_BUILDERS(customProxy)) {
     const proxied = build(url);
