@@ -6,7 +6,6 @@ export const DEFAULTS = {
   model: 'glm-5.3',
   fallbackModel: 'ilmu-vision-v1.3',
   targetLang: '简体中文',
-  concurrency: 2,
   customProxy: '',
   apiProxy: '',
   fontScale: 1,

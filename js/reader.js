@@ -1,6 +1,6 @@
 // reader.js — long-strip reader with overlay rendering and background translation queue.
 
-import { fetchHtmlViaProxy, imageProxyUrl } from './net.js?v=3.0';
+import { fetchHtmlViaProxy, imageProxyUrl } from './net.js?v=3.1';
 import { parsePageImages } from './scraper.js';
 import { translatePageImage } from './translate.js';
 import { cacheGet, cacheSet } from './cache.js';
@@ -8,7 +8,7 @@ import { cacheGet, cacheSet } from './cache.js';
 /** Translate one page by URL without any rendering (headless, for preload).
  * Checks cache first; returns true when the page ends up translated. */
 export async function translatePageHeadless(imageUrl, settings) {
-  const { cacheGet, cacheSet } = await import('./cache.js?v=3.0');
+  const { cacheGet, cacheSet } = await import('./cache.js?v=3.1');
   const key = imageUrl;
   if (await cacheGet(key).catch(() => undefined)) return { cached: true };
   const result = await translatePageImage({ imageUrl }, settings);
@@ -19,8 +19,8 @@ export async function translatePageHeadless(imageUrl, settings) {
 /** Preload one chapter URL: fetch HTML, parse pages, translate all headlessly.
  * Reports progress via onProgress(done, total). One retry per failed page. */
 export async function preloadChapter(chapterUrl, settings, onProgress, isCancelled) {
-  const { fetchHtmlViaProxy } = await import('./net.js?v=3.0');
-  const { parsePageImages } = await import('./scraper.js?v=3.0');
+  const { fetchHtmlViaProxy } = await import('./net.js?v=3.1');
+  const { parsePageImages } = await import('./scraper.js?v=3.1');
   const html = await fetchHtmlViaProxy(chapterUrl, settings.customProxy);
   const imageUrls = parsePageImages(html);
   if (imageUrls.length === 0) throw new Error('未能解析出页面图片');
@@ -29,7 +29,7 @@ export async function preloadChapter(chapterUrl, settings, onProgress, isCancell
   const failures = [];
   let doneCount = 0;
   const queue = [...imageUrls];
-  const workers = Array.from({ length: Math.max(1, Math.min(10, Number(settings.concurrency) || 2)) }, async () => {
+  const workers = Array.from({ length: TRANSLATE_CONCURRENCY }, async () => {
     while (queue.length) {
       if (isCancelled?.()) return;
       const url = queue.shift();
@@ -66,9 +66,11 @@ export function isDensePage(items) {
   return items.length >= 12 || coverage > 0.35;
 }
 
-/** Priority queue running up to `concurrency` tasks at once, lowest index first. */
+/** Priority queue running several translations at once, lowest index first. */
+export const TRANSLATE_CONCURRENCY = 3;
+
 export class Scheduler {
-  constructor(concurrency = 2) {
+  constructor(concurrency = TRANSLATE_CONCURRENCY) {
     this.concurrency = Math.max(1, Math.min(10, concurrency));
     this.active = 0;
     this.tasks = new Map(); // index -> () => Promise
@@ -302,7 +304,7 @@ export class Reader {
     this.onProgress = onProgress || (() => {});
     this.pages = [];        // [{imageUrl, el, imgEl, overlaysEl, statusEl, panelEl, done}]
     this.chapter = null;    // {url, title}
-    this.scheduler = new Scheduler(settings.concurrency);
+    this.scheduler = new Scheduler();
     this.observer = null;
     this.lookahead = 4;
     this.overlayVisible = true;
@@ -313,7 +315,7 @@ export class Reader {
   async openChapter(chapterUrl, chapterTitle = '') {
     this.destroy();
     this.chapter = { url: chapterUrl, title: chapterTitle };
-    this.scheduler = new Scheduler(this.settings.concurrency);
+    this.scheduler = new Scheduler();
     this.completed.clear();
 
     const html = await fetchHtmlViaProxy(chapterUrl, this.settings.customProxy);
@@ -323,22 +325,17 @@ export class Reader {
     this.pages = imageUrls.map((imageUrl) => this.#buildPage(imageUrl));
     this.#renderProgress();
 
-    this.observer = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) this.#requestAround(Number(e.target.dataset.idx));
-      }
-    }, { rootMargin: '150% 0px' });
-
-    for (const p of this.pages) this.observer.observe(p.el);
-    this.#requestAround(0);
-    // preloaded chapters: render every cached page immediately (no API calls)
-    // so the whole chapter shows translations, not just the first viewport+lookahead
+    // whole chapter translates immediately on open: cached pages render at
+    // once, all others queue in page order
     this.#applyAllCached();
+    for (let i = 0; i < this.pages.length; i++) {
+      this.#translate(i);
+    }
     return this.pages.length;
   }
 
   async #applyAllCached() {
-    const { cacheGet } = await import('./cache.js?v=3.0');
+    const { cacheGet } = await import('./cache.js?v=3.1');
     for (let i = 0; i < this.pages.length; i++) {
       const page = this.pages[i];
       if (page.done) continue;
@@ -389,12 +386,6 @@ export class Reader {
       }
     });
     return pageObj;
-  }
-
-  #requestAround(idx) {
-    for (let i = idx; i <= Math.min(idx + this.lookahead, this.pages.length - 1); i++) {
-      this.#translate(i);
-    }
   }
 
   /** Dialog from the nearest completed earlier page, in reading order.
@@ -698,22 +689,10 @@ export class Reader {
     document.body.classList.toggle('body-overlay-off', !visible);
   }
 
-  /** Queue translation for every page in the chapter (pre-load whole chapter).
-   * Already-done pages are skipped; the scheduler still enforces concurrency. */
-  translateAll() {
-    let queued = 0;
-    for (let i = 0; i < this.pages.length; i++) {
-      if (this.pages[i].done) continue;
-      this.#translate(i);
-      queued++;
-    }
-    return { queued, total: this.pages.length };
-  }
-
   /** Clear cached translations for this chapter's pages and re-translate all.
    * Flagged (marked inaccurate) pages are cleared and re-queued first. */
   async retranslateChapter() {
-    const { cacheDelete } = await import('./cache.js?v=3.0');
+    const { cacheDelete } = await import('./cache.js?v=3.1');
     const flagged = [];
     const rest = [];
     this.pages.forEach((p, i) => {
@@ -721,7 +700,7 @@ export class Reader {
     });
     const order = [...flagged, ...rest];
     await Promise.all(this.pages.map((p) => cacheDelete(p.imageUrl).catch(() => {})));
-    this.scheduler = new Scheduler(this.settings.concurrency);
+    this.scheduler = new Scheduler();
     for (const p of this.pages) {
       p.done = false;
       p.result = undefined;

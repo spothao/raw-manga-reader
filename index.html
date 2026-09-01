@@ -14,7 +14,7 @@
   <header id="topbar">
     <button id="btn-home" class="icon-btn" title="首页">📖</button>
     <div id="topbar-title">dokiraw 中文阅读器</div>
-    <span id="app-version" class="hint" style="padding-right:4px">v3.0</span>
+    <span id="app-version" class="hint" style="padding-right:4px">v3.1</span>
     <button id="btn-preload" class="icon-btn" title="批量预载">⚡</button>
     <button id="btn-settings" class="icon-btn" title="设置">⚙️</button>
   </header>
@@ -58,7 +58,6 @@
       </div>
       <div class="nav-row tool-row">
         <button id="btn-retranslate" title="重译整章">♻️ 重译</button>
-        <button id="btn-translate-all" title="预翻译整章">⚡ 预翻</button>
         <button id="btn-retry" title="重试失败页面">🔄 重试</button>
         <button id="btn-peek" title="按住查看原图">👁 原图</button>
       </div>
@@ -109,9 +108,6 @@
           <option value="繁體中文">繁體中文</option>
         </select>
       </label>
-      <label>并发数（同时翻译页数，1-10）
-        <input name="concurrency" type="number" min="1" max="10" step="1" value="2">
-      </label>
       <label>自定义 CORS 代理（可选，兜底用）
         <input name="customProxy" type="url" placeholder="https://my-proxy.example.com/?url=">
       </label>
@@ -153,6 +149,6 @@
     </section>
   </template>
 
-  <script type="module" src="js/app.js?v=3.0"></script>
+  <script type="module" src="js/app.js?v=3.1"></script>
 </body>
 </html>

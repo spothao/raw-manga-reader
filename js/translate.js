@@ -132,7 +132,7 @@ export function pickRenderMode(items, invalidCount) {
  */
 export async function translatePageImage(page, settings, fetchImpl = fetch, imageFetcher, context = []) {
   const getImage = imageFetcher || (async (url) => {
-    const { imageToDataUrl } = await import('./net.js?v=3.0');
+    const { imageToDataUrl } = await import('./net.js?v=3.1');
     return imageToDataUrl(url);
   });
   const dataUrl = await getImage(page.imageUrl);

@@ -1,11 +1,11 @@
 // app.js — entry point: view routing, URL loading, settings UI, history.
 
-import { fetchHtmlViaProxy } from './net.js?v=3.0';
-import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=3.0';
-import { Reader, preloadChapter } from './reader.js?v=3.0';
-import { DEFAULT_PROMPT } from './translate.js?v=3.0';
-import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=3.0';
-import { cacheClear, cacheCount } from './cache.js?v=3.0';
+import { fetchHtmlViaProxy } from './net.js?v=3.1';
+import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=3.1';
+import { Reader, preloadChapter } from './reader.js?v=3.1';
+import { DEFAULT_PROMPT } from './translate.js?v=3.1';
+import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=3.1';
+import { cacheClear, cacheCount } from './cache.js?v=3.1';
 
 const $ = (id) => document.getElementById(id);
 
@@ -206,7 +206,6 @@ function openSettings() {
   f.model.value = s.model;
   f.fallbackModel.value = s.fallbackModel;
   f.targetLang.value = s.targetLang;
-  f.concurrency.value = s.concurrency;
   f.customProxy.value = s.customProxy;
   f.apiProxy.value = s.apiProxy;
   f.patchOpacity.value = s.patchOpacity;
@@ -232,7 +231,6 @@ function saveSettingsFromForm() {
     model: f.model.value.trim(),
     fallbackModel: f.fallbackModel.value.trim(),
     targetLang: f.targetLang.value,
-    concurrency: Math.round(clampNum(f.concurrency.value, 1, 10, 2)),
     customProxy: f.customProxy.value.trim(),
     apiProxy: f.apiProxy.value.trim(),
     patchOpacity: clampNum(f.patchOpacity.value, 0.5, 1, 0.92),
@@ -437,16 +435,6 @@ $('file-import-settings').addEventListener('change', async (e) => {
     alert('设置导入成功 ✓');
   } catch (err) {
     alert(`导入失败: 文件不是有效的设置 JSON (${err.message || err})`);
-  }
-});
-
-$('btn-translate-all').addEventListener('click', () => {
-  if (!state.reader) return;
-  const { queued, total } = state.reader.translateAll();
-  if (queued === 0) {
-    alert(`本章 ${total} 页已全部翻译完成 ✓`);
-  } else {
-    alert(`已开始预翻译整章：${queued}/${total} 页排队中（并发 ${state.settings.concurrency}），进度见顶部进度条。可离开页面但建议保持前台。`);
   }
 });
 
