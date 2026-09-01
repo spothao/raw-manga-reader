@@ -1,11 +1,11 @@
 // app.js — entry point: view routing, URL loading, settings UI, history.
 
-import { fetchHtmlViaProxy } from './net.js?v=2.7';
-import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.7';
-import { Reader, preloadChapter } from './reader.js?v=2.7';
-import { DEFAULT_PROMPT } from './translate.js?v=2.7';
-import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.7';
-import { cacheClear, cacheCount } from './cache.js?v=2.7';
+import { fetchHtmlViaProxy } from './net.js?v=2.8';
+import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.8';
+import { Reader, preloadChapter } from './reader.js?v=2.8';
+import { DEFAULT_PROMPT } from './translate.js?v=2.8';
+import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.8';
+import { cacheClear, cacheCount } from './cache.js?v=2.8';
 
 const $ = (id) => document.getElementById(id);
 
@@ -182,6 +182,20 @@ $('btn-clear-history').addEventListener('click', () => {
   localStorage.removeItem('dokiraw-history');
   renderHistory();
 });
+
+// keep the bottom bar glued to the art column while scrolling horizontally
+const chapterNav = document.querySelector('.chapter-nav');
+let navRaf = false;
+window.addEventListener('scroll', () => {
+  if (navRaf) return;
+  navRaf = true;
+  requestAnimationFrame(() => {
+    navRaf = false;
+    if (chapterNav && !document.getElementById('view-reader').hidden) {
+      chapterNav.style.transform = `translateX(${-window.scrollX}px)`;
+    }
+  });
+}, { passive: true });
 
 /* ---------- settings ---------- */
 function openSettings() {

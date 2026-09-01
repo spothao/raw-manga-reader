@@ -1,6 +1,6 @@
 // reader.js — long-strip reader with overlay rendering and background translation queue.
 
-import { fetchHtmlViaProxy, imageProxyUrl } from './net.js?v=2.7';
+import { fetchHtmlViaProxy, imageProxyUrl } from './net.js?v=2.8';
 import { parsePageImages } from './scraper.js';
 import { translatePageImage } from './translate.js';
 import { cacheGet, cacheSet } from './cache.js';
@@ -8,7 +8,7 @@ import { cacheGet, cacheSet } from './cache.js';
 /** Translate one page by URL without any rendering (headless, for preload).
  * Checks cache first; returns true when the page ends up translated. */
 export async function translatePageHeadless(imageUrl, settings) {
-  const { cacheGet, cacheSet } = await import('./cache.js?v=2.7');
+  const { cacheGet, cacheSet } = await import('./cache.js?v=2.8');
   const key = imageUrl;
   if (await cacheGet(key).catch(() => undefined)) return { cached: true };
   const result = await translatePageImage({ imageUrl }, settings);
@@ -19,8 +19,8 @@ export async function translatePageHeadless(imageUrl, settings) {
 /** Preload one chapter URL: fetch HTML, parse pages, translate all headlessly.
  * Reports progress via onProgress(done, total). One retry per failed page. */
 export async function preloadChapter(chapterUrl, settings, onProgress, isCancelled) {
-  const { fetchHtmlViaProxy } = await import('./net.js?v=2.7');
-  const { parsePageImages } = await import('./scraper.js?v=2.7');
+  const { fetchHtmlViaProxy } = await import('./net.js?v=2.8');
+  const { parsePageImages } = await import('./scraper.js?v=2.8');
   const html = await fetchHtmlViaProxy(chapterUrl, settings.customProxy);
   const imageUrls = parsePageImages(html);
   if (imageUrls.length === 0) throw new Error('未能解析出页面图片');
@@ -335,7 +335,7 @@ export class Reader {
   }
 
   async #applyAllCached() {
-    const { cacheGet } = await import('./cache.js?v=2.7');
+    const { cacheGet } = await import('./cache.js?v=2.8');
     for (let i = 0; i < this.pages.length; i++) {
       const page = this.pages[i];
       if (page.done) continue;
@@ -710,7 +710,7 @@ export class Reader {
   /** Clear cached translations for this chapter's pages and re-translate all.
    * Flagged (marked inaccurate) pages are cleared and re-queued first. */
   async retranslateChapter() {
-    const { cacheDelete } = await import('./cache.js?v=2.7');
+    const { cacheDelete } = await import('./cache.js?v=2.8');
     const flagged = [];
     const rest = [];
     this.pages.forEach((p, i) => {
