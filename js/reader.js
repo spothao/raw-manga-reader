@@ -1,6 +1,6 @@
 // reader.js — long-strip reader with overlay rendering and background translation queue.
 
-import { fetchHtmlViaProxy, imageProxyUrl } from './net.js?v=2.9';
+import { fetchHtmlViaProxy, imageProxyUrl } from './net.js?v=3.0';
 import { parsePageImages } from './scraper.js';
 import { translatePageImage } from './translate.js';
 import { cacheGet, cacheSet } from './cache.js';
@@ -8,7 +8,7 @@ import { cacheGet, cacheSet } from './cache.js';
 /** Translate one page by URL without any rendering (headless, for preload).
  * Checks cache first; returns true when the page ends up translated. */
 export async function translatePageHeadless(imageUrl, settings) {
-  const { cacheGet, cacheSet } = await import('./cache.js?v=2.9');
+  const { cacheGet, cacheSet } = await import('./cache.js?v=3.0');
   const key = imageUrl;
   if (await cacheGet(key).catch(() => undefined)) return { cached: true };
   const result = await translatePageImage({ imageUrl }, settings);
@@ -19,8 +19,8 @@ export async function translatePageHeadless(imageUrl, settings) {
 /** Preload one chapter URL: fetch HTML, parse pages, translate all headlessly.
  * Reports progress via onProgress(done, total). One retry per failed page. */
 export async function preloadChapter(chapterUrl, settings, onProgress, isCancelled) {
-  const { fetchHtmlViaProxy } = await import('./net.js?v=2.9');
-  const { parsePageImages } = await import('./scraper.js?v=2.9');
+  const { fetchHtmlViaProxy } = await import('./net.js?v=3.0');
+  const { parsePageImages } = await import('./scraper.js?v=3.0');
   const html = await fetchHtmlViaProxy(chapterUrl, settings.customProxy);
   const imageUrls = parsePageImages(html);
   if (imageUrls.length === 0) throw new Error('未能解析出页面图片');
@@ -191,7 +191,7 @@ function wouldCollide(rect, siblings, self) {
 }
 
 /** Reshape a box into a manga-style vertical rectangle: clamp its width so
- * the box is always taller than wide (aspect <= 0.75), anchored to its right
+ * the box is always taller than wide (aspect <= 0.6), anchored to its right
  * edge where vertical text begins. Skips growth that would hit a sibling. */
 function enforceVerticalShape(box, siblings = []) {
   const parent = box.parentElement;
@@ -204,8 +204,11 @@ function enforceVerticalShape(box, siblings = []) {
   const height = parseFloat(box.style.height);
   const boxW = box.clientWidth;
   const boxH = box.clientHeight;
-  if (boxH > boxW * 1.33) return;
-  const maxW = Math.max(Math.round(boxH * 0.75), Math.round(parseFloat(box.style.fontSize) || 12) * 2);
+  const textLen = (box.textContent || '').length;
+  // short texts get a tighter, cleaner column; longer texts 0.75
+  const targetAspect = textLen <= 6 ? 0.6 : 0.75;
+  if (boxH > boxW / targetAspect * 0.9) return;
+  const maxW = Math.max(Math.round(boxH * targetAspect), Math.round(parseFloat(box.style.fontSize) || 12) * 2);
   if (boxW <= maxW) return;
   const newWPx = Math.min(boxW, maxW);
   const fs = parseFloat(box.style.fontSize) || 12;
@@ -213,7 +216,7 @@ function enforceVerticalShape(box, siblings = []) {
   const columns = Math.ceil((box.textContent || '').length / charsPerColumn);
   const neededW = Math.max(newWPx, columns * fs * 1.15 + fs * 0.8);
   const newW = Math.min(boxW, Math.round(neededW));
-  const newHPx = Math.round(newW / 0.75);
+  const newHPx = Math.round(newW / targetAspect);
   let newH = Math.max(boxH, Math.min(newHPx, parentH * 0.95));
   const newLeftPct = left + (boxW - newW) / parentW * 100;
   let newTopPct = top - (newH - boxH) / parentH * 100 / 2;
@@ -335,7 +338,7 @@ export class Reader {
   }
 
   async #applyAllCached() {
-    const { cacheGet } = await import('./cache.js?v=2.9');
+    const { cacheGet } = await import('./cache.js?v=3.0');
     for (let i = 0; i < this.pages.length; i++) {
       const page = this.pages[i];
       if (page.done) continue;
@@ -710,7 +713,7 @@ export class Reader {
   /** Clear cached translations for this chapter's pages and re-translate all.
    * Flagged (marked inaccurate) pages are cleared and re-queued first. */
   async retranslateChapter() {
-    const { cacheDelete } = await import('./cache.js?v=2.9');
+    const { cacheDelete } = await import('./cache.js?v=3.0');
     const flagged = [];
     const rest = [];
     this.pages.forEach((p, i) => {
