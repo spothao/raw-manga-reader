@@ -377,8 +377,7 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   bottom: 0;
   left: 0;
   z-index: 20;
-  width: calc(100% + var(--side-w));
-  max-width: calc(820px + var(--side-w));
+  width: 100vw;
   margin: 0;
   padding: 0;
   background: transparent;
@@ -394,7 +393,7 @@ button.danger { background: #7f2528; color: #ffd9da; border: none; border-radius
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--surface-2);
   padding: 8px 10px 4px;
-  width: calc(100% - var(--side-w));
+  width: min(100vw, 820px);
 }
 .chapter-nav .nav-row + .nav-row { padding: 0 10px calc(8px + env(safe-area-inset-bottom)); }
 .chapter-nav .tool-row button {
