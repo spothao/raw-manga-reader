@@ -1,11 +1,11 @@
 // app.js — entry point: view routing, URL loading, settings UI, history.
 
-import { fetchHtmlViaProxy } from './net.js?v=2.6';
-import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.6';
-import { Reader, preloadChapter } from './reader.js?v=2.6';
-import { DEFAULT_PROMPT } from './translate.js?v=2.6';
-import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.6';
-import { cacheClear, cacheCount } from './cache.js?v=2.6';
+import { fetchHtmlViaProxy } from './net.js?v=2.7';
+import { classifyUrl, parseChapterLinks, parseMangaTitle, parsePageImages } from './scraper.js?v=2.7';
+import { Reader, preloadChapter } from './reader.js?v=2.7';
+import { DEFAULT_PROMPT } from './translate.js?v=2.7';
+import { loadSettings, saveSettings, resetSettings, loadHistory, addHistory, removeHistory } from './settings.js?v=2.7';
+import { cacheClear, cacheCount } from './cache.js?v=2.7';
 
 const $ = (id) => document.getElementById(id);
 
@@ -103,14 +103,14 @@ function absolute(href) {
 function normalizeChapterUrl(u) {
   return u
     .replace(/\/+$/, '')
-    .replace(/^https?:\/\/dokiraw\.(space|casa)/, '');
+    .replace(/^https?:\/\/([a-z0-9-]+\.)*dokiraw\.(space|casa)/i, '');
 }
 
 async function openChapterByHref(href) {
-  const target = normalizeChapterUrl(href);
+  const fullUrl = href.startsWith('http') ? href : absolute(href);
+  const target = normalizeChapterUrl(fullUrl);
   let idx = state.chapters.findIndex((c) => normalizeChapterUrl(absolute(c.href)) === target);
   if (idx === -1) {
-    // chapter not in the loaded list — (re)load its manga page so prev/next work
     const slug = target.match(/\/manga\/([^/]+)\/chapter-/)?.[1];
     if (slug) {
       try {
@@ -135,8 +135,8 @@ async function openChapterByHref(href) {
     state.reader = new Reader($('pages'), $('reader-progress'), state.settings);
   }
   try {
-    await state.reader.openChapter(target, `${state.manga?.title || ''} ${label}`.trim());
-    addHistory({ url: target, title: `${state.manga?.title || ''} ${label}`.trim() });
+    await state.reader.openChapter(fullUrl, `${state.manga?.title || ''} ${label}`.trim());
+    addHistory({ url: fullUrl, title: `${state.manga?.title || ''} ${label}`.trim() });
   } catch (e) {
     $('pages').innerHTML = '';
     const el = $('reader-error');
